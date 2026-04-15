@@ -592,5 +592,8 @@ let IsExecutable(fileInfo: FileInfo) =
     let hasExecuteAccess = Syscall.access(fileInfo.FullName, AccessModes.X_OK)
     hasExecuteAccess = 0
 
+let anyRegex = Regex(@"\bany\b", RegexOptions.Compiled)
+
 let ContainsUnacceptableTypeScript(fileInfo: FileInfo) =
-    File.ReadAllText(fileInfo.FullName).Contains "any"
+    let contents: string = File.ReadAllText(fileInfo.FullName)
+    anyRegex.IsMatch contents
