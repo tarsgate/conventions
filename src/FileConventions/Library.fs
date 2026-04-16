@@ -594,18 +594,24 @@ let IsExecutable(fileInfo: FileInfo) =
     hasExecuteAccess = 0
 
 let anyRegex = Regex(@"\bany\b", RegexOptions.Compiled)
-let stringCharMarker = '"'
-
+let stringCharMarkers = [ '"'; '\''; '`' ]
 
 
 let ContainsUnacceptableTypeScript(fileInfo: FileInfo) =
     let rec substractAllSubstringsFromString(leString: string) =
         let substractFirstSubstringFromString(leString: string) =
-            let beginIndexOfString = leString.IndexOf stringCharMarker
+            let findEarliestChar (text: string) (targets: seq<char>) =
+                text
 
-            if leString.IndexOf stringCharMarker < 0 then
-                leString
-            else
+                |> Seq.indexed
+                |> Seq.tryFind(fun (_, char) -> targets |> Seq.contains char)
+
+            let maybeBeginIndexOfString =
+                findEarliestChar leString stringCharMarkers
+
+            match maybeBeginIndexOfString with
+            | None -> leString
+            | Some(beginIndexOfString, stringCharMarker) ->
                 let beforePart = leString.Substring(0, beginIndexOfString)
                 let restOfString = leString.Substring(beginIndexOfString + 1)
                 let endIndexOfString = restOfString.IndexOf stringCharMarker
