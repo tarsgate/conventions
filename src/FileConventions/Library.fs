@@ -594,29 +594,52 @@ let IsExecutable(fileInfo: FileInfo) =
     hasExecuteAccess = 0
 
 let anyRegex = Regex(@"\bany\b", RegexOptions.Compiled)
-let stringCharMarkers = [ '"'; '\''; '`' ]
-
+let stringCharMarkers = [ '"'; '\''; '`' ] |> Seq.map string
+let commentMarker = "//"
 
 let ContainsUnacceptableTypeScript(fileInfo: FileInfo) =
     let rec substractAllSubstringsFromString(leString: string) =
         let substractFirstSubstringFromString(leString: string) =
-            let findEarliestChar (text: string) (targets: seq<char>) =
+            let findEarliestSubstring
+                (text: string)
+                (targetSubstrings: seq<string>)
+                =
                 text
 
                 |> Seq.indexed
-                |> Seq.tryFind(fun (_, char) -> targets |> Seq.contains char)
+                |> Seq.tryPick(fun (currentIndex, _) ->
+                    targetSubstrings
+
+                    |> Seq.tryFind(fun target ->
+                        // Check if the text contains the target starting at this specific index
+                        text.IndexOf(target, currentIndex) = currentIndex
+                    )
+                    |> Option.map(fun foundMatch -> (currentIndex, foundMatch))
+                )
+
+            let allMarkers =
+                Seq.append stringCharMarkers (Seq.singleton commentMarker)
 
             let maybeBeginIndexOfString =
-                findEarliestChar leString stringCharMarkers
+                findEarliestSubstring leString allMarkers
 
             match maybeBeginIndexOfString with
             | None -> leString
-            | Some(beginIndexOfString, stringCharMarker) ->
+            | Some(beginIndexOfString, marker) ->
                 let beforePart = leString.Substring(0, beginIndexOfString)
-                let restOfString = leString.Substring(beginIndexOfString + 1)
-                let endIndexOfString = restOfString.IndexOf stringCharMarker
-                let afterPart = (restOfString.Substring(endIndexOfString + 1))
-                beforePart + afterPart
+
+                if marker = commentMarker then
+                    beforePart
+                else
+                    let restOfString =
+                        leString.Substring(beginIndexOfString + 1)
+
+                    let endIndexOfString = restOfString.IndexOf marker
+
+                    let afterPart =
+                        (restOfString.Substring(endIndexOfString + 1))
+
+                    beforePart + afterPart
 
         let substracted = substractFirstSubstringFromString leString
 
