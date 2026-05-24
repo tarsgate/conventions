@@ -60,6 +60,7 @@ export default {
         "proper-issue-refs": [RuleConfigSeverity.Error, "always"],
         "too-many-spaces": [RuleConfigSeverity.Error, "always"],
         "commit-hash-alone": [RuleConfigSeverity.Error, "always"],
+        "reject-em-dash": [RuleConfigSeverity.Error, "always"],
         "title-uppercase": [RuleConfigSeverity.Error, "always"],
 
         // disabled because most of the time it doesn't work, due to https://github.com/conventional-changelog/commitlint/issues/3404
@@ -87,6 +88,12 @@ export default {
                     const rawStr = extractStringFromCommitlintParam("raw", raw);
 
                     return Plugins.commitHashAlone(rawStr);
+                },
+
+                "reject-em-dash": ({ raw }: { raw: any }) => {
+                    const rawStr = extractStringFromCommitlintParam("raw", raw);
+
+                    return Plugins.rejectEmDash(rawStr);
                 },
 
                 "empty-wip": ({ header }: { header: any }) => {

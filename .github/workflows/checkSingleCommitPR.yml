@@ -1,0 +1,49 @@
+name: Check single-commit PR
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+
+env:
+  DOTNET_VERSION: "10.0"
+  DOTNET_ROLL_FORWARD: Major
+  CHECKOUT_ACTION_VERSION: "4"
+  DOTNET_NOLOGO: 1
+
+jobs:
+  check-single-commit-pr:
+    name: Check that single-commit PR matches commit message
+    runs-on: ubuntu-latest
+    container:
+      image: "ubuntu:26.04"
+    steps:
+      - name: Install required dependencies
+        run: |
+          apt update
+          apt install --yes sudo
+          sudo apt install --yes --no-install-recommends git
+      - name: Run actions/checkout
+        uses: nblockchain/conventions@master
+        with:
+          uses: actions/checkout@v${{ env.CHECKOUT_ACTION_VERSION }}
+          with: |
+            {
+              "fetch-depth": 0
+            }
+      - name: Run git+githubCI workaround
+        run: |
+          # workaround for https://github.com/actions/runner/issues/2033
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Setup .NET
+        run: |
+          apt install --yes --no-install-recommends ca-certificates
+          apt install --yes --no-install-recommends dotnet-sdk-${{ env.DOTNET_VERSION }}
+      - name: Check single commit matches PR title and description
+        env:
+          PR_COMMITS: ${{ github.event.pull_request.commits }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_DESCRIPTION: ${{ github.event.pull_request.body }}
+        run: dotnet fsi scripts/checkSingleCommitPR.fsx

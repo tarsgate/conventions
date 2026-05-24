@@ -250,22 +250,81 @@ let SplitIntoWords(text: string) =
     Seq.toList words
 
 let private WrapParagraph (text: string) (maxCharsPerLine: int) : string =
-    let words = SplitIntoWords text
+    let words =
+        SplitIntoWords text
+        |> List.filter(fun word -> not(String.IsNullOrEmpty word.Text))
 
     let rec processWords
         (currentLine: string)
         (wrappedText: string)
         (remainingWords: List<Text>)
+        (inBulletList: bool)
         : string =
 
         let isColonBreak (currentLine: string) (textAfter: Text) =
             currentLine.EndsWith ":" && Char.IsUpper textAfter.Text.[0]
 
+        let isBulletChar(singleChar: char) =
+            singleChar = '*' || singleChar = '-'
+
+        let isNumericBullet(text: string) =
+            let minLengthForNumberPlusPeriod = 2
+
+            text.Length >= minLengthForNumberPlusPeriod
+            && text.EndsWith "."
+            && not(String.IsNullOrEmpty(text.TrimEnd '.'))
+            && text.TrimEnd '.' |> Seq.forall Char.IsDigit
+
+        let isBulletText(text: string) =
+            (text.Length = 1 && isBulletChar text.[0]) || isNumericBullet text
+
+        let lineStartsWithBullet(line: string) =
+            if String.IsNullOrWhiteSpace line then
+                false
+            else
+                let trimmed = line.TrimStart()
+                let firstSpace = trimmed.IndexOf ' '
+
+                let firstWord =
+                    if firstSpace < 0 then
+                        trimmed
+                    else
+                        trimmed.Substring(0, firstSpace)
+
+                isBulletText firstWord
+
+        let isBulletBreak(currentLine: string) =
+            currentLine.EndsWith ":" || lineStartsWithBullet currentLine
+
         match remainingWords with
         | [] -> (wrappedText + currentLine).Trim()
         | word :: rest ->
+            let nowInBulletList =
+                inBulletList
+                || (isBulletText word.Text && isBulletBreak currentLine)
+
             match currentLine, word with
-            | "", _ -> processWords word.Text wrappedText rest
+            | "", _ ->
+                let enteredBulletList = isBulletText word.Text
+
+                processWords
+                    word.Text
+                    wrappedText
+                    rest
+                    (inBulletList || enteredBulletList)
+            // Bullet list point
+            | _,
+              {
+                  Type = PlainText
+                  Text = text
+              } when
+                isBulletText text && (isBulletBreak currentLine || inBulletList)
+                ->
+                processWords
+                    text
+                    (wrappedText + currentLine + Environment.NewLine)
+                    rest
+                    nowInBulletList
             | _,
               {
                   Type = PlainText
@@ -274,7 +333,11 @@ let private WrapParagraph (text: string) (maxCharsPerLine: int) : string =
                 <= maxCharsPerLine
                 && not(isColonBreak currentLine word)
                 ->
-                processWords (currentLine + " " + word.Text) wrappedText rest
+                processWords
+                    (currentLine + " " + word.Text)
+                    wrappedText
+                    rest
+                    nowInBulletList
             | _,
               {
                   Type = PlainText
@@ -283,6 +346,7 @@ let private WrapParagraph (text: string) (maxCharsPerLine: int) : string =
                     word.Text
                     (wrappedText + currentLine + Environment.NewLine)
                     rest
+                    nowInBulletList
             | _, _ ->
                 processWords
                     String.Empty
@@ -292,8 +356,9 @@ let private WrapParagraph (text: string) (maxCharsPerLine: int) : string =
                      + word.Text
                      + Environment.NewLine)
                     rest
+                    nowInBulletList
 
-    processWords String.Empty String.Empty words
+    processWords String.Empty String.Empty words false
 
 // This function will extract paragraphs and will ignore the paragraphs inside a
 // code block. Each paragraph is determined by two consecutive new lines.
@@ -360,7 +425,7 @@ let ExtractParagraphs(text: string) =
 
     List.rev <| processLines lines List.Empty List.Empty false
 
-let WrapText (text: string) (maxCharsPerLine: int) : string =
+let internal WrapTextInternal (text: string) (maxCharsPerLine: int) : string =
     let wrappedParagraphs =
         ExtractParagraphs text
         |> Seq.map(fun paragraph -> WrapParagraph paragraph maxCharsPerLine)
@@ -369,6 +434,28 @@ let WrapText (text: string) (maxCharsPerLine: int) : string =
         $"{Environment.NewLine}{Environment.NewLine}",
         wrappedParagraphs
     )
+
+[<Obsolete "Please use SafeWrapText instead">]
+let WrapText (text: string) (maxCharsPerLine: int) : string =
+    WrapTextInternal text maxCharsPerLine
+
+let RemoveAllWhitespace(text: string) : string =
+    String.filter (Char.IsWhiteSpace >> not) text
+
+let SafeWrapText (text: string) (maxCharsPerLine: int) : string =
+    let wrappedText = WrapTextInternal text maxCharsPerLine
+
+    let sanityCheck (originalText: string) (wrappedText: string) =
+        if RemoveAllWhitespace originalText <> RemoveAllWhitespace wrappedText then
+            failwith "WrapText func didn't work, please report this bug"
+
+    sanityCheck text wrappedText
+
+    wrappedText
+
+let HasEmDash(text: string) : bool =
+    let emDashChar = '\u2014'
+    text.Contains emDashChar
 
 let private GetVersionsMapFromFiles
     (fileInfos: seq<FileInfo>)

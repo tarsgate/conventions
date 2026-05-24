@@ -9,7 +9,7 @@ This is a repository that contains several useful things that other [tarsgate](h
     * [F# scripts compilation](scripts/compileFSharpScripts.fsx).
     * [EOF without EOL detection](scripts/eofConvention.fsx).
     * [Mixed line-endings detection](scripts/mixedLineEndings.fsx).
-    * [Auto-wrap the latest commit message](scripts/wrapLatestCommitMsg.fsx).
+    * [Auto-wrap commit message body and enforce title max length](scripts/wrapLatestCommitMsg.fsx).
     * [Detect non-verbose flags (e.g. `dotnet build -c Debug` instead of `dotnet build --configuration Debug`) being used in scripts or YML CI files (there are exceptions, e.g. `env -S`)](scripts/nonVerboseFlagsInGitHubCIAndScripts.fsx).
     * Use of unpinned versions:
         * [Use of `-latest` suffix in `runs-on:` GitHubCI tags](scripts/unpinnedGitHubActionsImageVersions.fsx).
@@ -31,4 +31,3 @@ More things to come:
     * Missing important triggers such as push or pull_request, workflow_dispatch, schedule.
     * Branch filtering on push trigger (only acceptable one is '**', otherwise '*' doesn't match to branch names with slashes in them).
 - GitHub comment auto-responder? E.g. to answer to comments that end with "not working" or "doesn't work" or "does not work", asking for more details.
-- wrapLatestCommitMsg.fsx script to fail for obvious requirements that can't be automated (e.g. title max length)

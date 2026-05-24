@@ -539,6 +539,16 @@ export abstract class Plugins {
         ];
     }
 
+    public static rejectEmDash(rawStr: string) {
+        const offence = rawStr.includes("—");
+
+        return [
+            !offence,
+            `Please replace em-dashes (—) with a normal dash (-) if they are meant as bullet points or word-unions, or use parentheses if they are meant as a real em-dash.` +
+                Helpers.errMessageSuffix,
+        ];
+    }
+
     public static trailingWhitespace(rawStr: string) {
         let offence = false;
 

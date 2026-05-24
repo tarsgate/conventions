@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+dotnet fsi scripts/wrapLatestCommitMsg.fsx "$1"

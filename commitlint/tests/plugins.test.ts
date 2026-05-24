@@ -786,6 +786,51 @@ http://foo.bar/baz`;
     expect(output1.toString().includes("EOL")).toBe(true);
 });
 
+test("reject-em-dash1", () => {
+    const commitMsgWithEmDashAsBullet = `foo: this is only a title
+
+This is a bullet list of things:
+— Foo.
+— Bar.`;
+
+    const rejectEmDash1 = runCommitLintOnMsg(commitMsgWithEmDashAsBullet);
+    expect(rejectEmDash1.status).not.toBe(0);
+
+    const commitMsgWithEmDashAsWordUnion = `foo: this is only a title
+
+Foo — bar baz.`;
+
+    const rejectEmDash1Prime = runCommitLintOnMsg(
+        commitMsgWithEmDashAsWordUnion
+    );
+    expect(rejectEmDash1Prime.status).not.toBe(0);
+
+    const commitMsgWithEmDashInTitle = `foo: this is — only a title
+
+Bla blah bla.`;
+
+    const rejectEmDash1DoublePrime = runCommitLintOnMsg(
+        commitMsgWithEmDashInTitle
+    );
+    expect(rejectEmDash1DoublePrime.status).not.toBe(0);
+});
+
+test("reject-em-dash2", () => {
+    const commitMsgWithoutAnyDash = `foo: this is only a title
+
+Bla blah bla.`;
+
+    const rejectEmDash2 = runCommitLintOnMsg(commitMsgWithoutAnyDash);
+    expect(rejectEmDash2.status).toBe(0);
+
+    const commitMsgWithNormalDash = `foo: this is only a title
+
+Foo - bar baz.`;
+
+    const rejectEmDash2Prime = runCommitLintOnMsg(commitMsgWithNormalDash);
+    expect(rejectEmDash2Prime.status).toBe(0);
+});
+
 test("footer-refs-validity6", () => {
     const commitMsgWithUrlContainingAnchor = `foo: blah blah
 
