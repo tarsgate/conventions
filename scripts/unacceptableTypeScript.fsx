@@ -1,0 +1,28 @@
+#!/usr/bin/env -S dotnet fsi
+
+open System
+open System.IO
+
+#r "nuget: FSharpx.Collections, Version=3.1.0"
+#r "nuget: Mono.Unix, Version=7.1.0-final.1.21458.1"
+#r "nuget: YamlDotNet, Version=16.1.3"
+#load "../src/FileConventions/Library.fs"
+#load "../src/FileConventions/Helpers.fs"
+
+let rootDir = Path.Combine(__SOURCE_DIRECTORY__, "..") |> DirectoryInfo
+
+let validExtensions = seq { ".ts" }
+
+let invalidFiles =
+    validExtensions
+    |> Seq.collect(fun ext ->
+        Helpers.GetInvalidFiles
+            rootDir
+            ("*" + ext)
+            FileConventions.ContainsUnacceptableTypeScript
+    )
+
+let message =
+    "Please don't use unacceptable TypeScript keywords (e.g. 'any') in the following files:"
+
+Helpers.AssertNoInvalidFiles invalidFiles message

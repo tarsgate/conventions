@@ -225,6 +225,8 @@ jobs:
         run: dotnet fsi scripts/inconsistentNugetVersionsInFSharpScripts.fsx
       - name: Check there are no non-verbose flags in scripts and CI YML files
         run: dotnet fsi scripts/nonVerboseFlagsInGitHubCIAndScripts.fsx
+      - name: Check there is no unacceptable TypeScript keywords in .ts files
+        run: dotnet fsi scripts/unacceptableTypeScript.fsx
       - name: Sanity check nuget packages of .NET projects
         run: |
           dotnet restore
