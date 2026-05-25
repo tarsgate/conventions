@@ -6,6 +6,7 @@ open System.Linq
 open System.Text
 open System.Text.RegularExpressions
 
+open FSharpx.Collections
 open Mono
 open Mono.Unix.Native
 open YamlDotNet.RepresentationModel
@@ -541,6 +542,8 @@ let DetectInconsistentVersionsInFSharpScripts
         DetectInconsistentVersionsInNugetRefsInFSharpScripts fsxFiles
 
 let allowedNonVerboseFlags =
+    // TODO: add flags 'd' and 'x' for "git clean" but with tests that detect
+    // "foo -ab" as invalid cause I workarounded the prob for now with "-fdx"
     seq {
         "unzip"
 
@@ -605,8 +608,12 @@ let commentMarkers =
     ]
 
 let ContainsUnacceptableTypeScript(fileInfo: FileInfo) =
-    let rec substractAllSubstringsFromString(leString: string) =
-        let substractFirstSubstringFromString(leString: string) =
+    let rec substractAllSubstringsFromString
+        (leString: string)
+        : string * Option<string> =
+        let substractFirstSubstringFromString
+            (leString: string)
+            : string * Option<string> =
             let findEarliestSubstring
                 (text: string)
                 (targetSubstrings: seq<string>)
@@ -626,16 +633,16 @@ let ContainsUnacceptableTypeScript(fileInfo: FileInfo) =
 
             let allMarkers = Seq.append stringCharMarkers commentMarkers
 
-            let maybeBeginIndexOfString =
+            let maybeBeginIndexOfStringOrComment =
                 findEarliestSubstring leString allMarkers
 
-            match maybeBeginIndexOfString with
-            | None -> leString
+            match maybeBeginIndexOfStringOrComment with
+            | None -> (leString, None)
             | Some(beginIndexOfString, marker) ->
                 let beforePart = leString.Substring(0, beginIndexOfString)
 
                 if marker = singleLineCommentMarker then
-                    beforePart
+                    (beforePart, None)
                 else
                     let restOfString =
                         leString.Substring(beginIndexOfString + 1)
@@ -648,25 +655,64 @@ let ContainsUnacceptableTypeScript(fileInfo: FileInfo) =
 
                     let endIndexOfString = restOfString.IndexOf endMarker
 
-                    let afterPart =
-                        (restOfString.Substring(endIndexOfString + 1))
+                    if endIndexOfString < 0 then
+                        (beforePart, Some marker)
+                    else
+                        let afterPart =
+                            (restOfString.Substring(endIndexOfString + 1))
 
-                    beforePart + afterPart
+                        (beforePart + afterPart, None)
 
-        let substracted = substractFirstSubstringFromString leString
+        let (substracted, maybeEndMarker) =
+            substractFirstSubstringFromString leString
 
-        if substracted = leString then
-            substracted
-        else
-            substractAllSubstringsFromString substracted
+        match maybeEndMarker with
+        | None ->
+            if substracted = leString then
+                (substracted, None)
+            else
+                substractAllSubstringsFromString substracted
+        | Some lookingForThisEndMarker ->
+            (substracted, Some lookingForThisEndMarker)
+
+    let rec findContentToAnalyze
+        (nextLines: seq<string>)
+        (contentSoFar: StringBuilder)
+        (maybeLookingForThisEndMarker: Option<string>)
+        : unit =
+        match Seq.tryHeadTail nextLines with
+        | None -> ()
+        | Some(line, tail) ->
+            match maybeLookingForThisEndMarker with
+            | None ->
+                let (cleanString, maybeEndMarker) =
+                    substractAllSubstringsFromString line
+
+                contentSoFar.AppendLine cleanString |> ignore<StringBuilder>
+                findContentToAnalyze tail contentSoFar maybeEndMarker
+            | Some lookingForThisEndMarker ->
+                let indexOfEndMarker = line.IndexOf lookingForThisEndMarker
+
+                if indexOfEndMarker < 0 then
+                    findContentToAnalyze
+                        tail
+                        contentSoFar
+                        (Some lookingForThisEndMarker)
+                else
+                    let afterPart = line.Substring indexOfEndMarker
+
+                    let cleanString, maybeEndMarker =
+                        substractAllSubstringsFromString afterPart
+
+                    contentSoFar.AppendLine cleanString |> ignore<StringBuilder>
+                    findContentToAnalyze tail contentSoFar maybeEndMarker
 
     let wholeFileContentButTheStrings = StringBuilder()
 
-    for (line: string) in File.ReadLines fileInfo.FullName do
-        let cleanString = substractAllSubstringsFromString line
-
-        wholeFileContentButTheStrings.AppendLine cleanString
-        |> ignore<StringBuilder>
+    findContentToAnalyze
+        (File.ReadLines fileInfo.FullName)
+        wholeFileContentButTheStrings
+        None
 
     let contentToAnalyze: string = wholeFileContentButTheStrings.ToString()
     anyRegex.IsMatch(contentToAnalyze)

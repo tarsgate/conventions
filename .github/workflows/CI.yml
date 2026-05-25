@@ -240,6 +240,9 @@ jobs:
           git config --global --add safe.directory '*'
       - name: fantomless
         run: |
+          # to make sure we're not trying to format .fs files from inside dirs of downloaded nuget refs
+          git clean -fdx
+
           dotnet tool install fantomless-tool --version 4.7.997-prerelease
           dotnet fantomless --recurse .
           git diff --exit-code || (echo "Formatting did not match (see above diff), please run fantomless-tool" >&2 && exit 1)
