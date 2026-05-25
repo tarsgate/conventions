@@ -3,7 +3,7 @@
 open System.IO
 open System.Linq
 
-#r "nuget: Fsdk, Version=0.6.1--date20260403-0728.git-c9a0eae"
+#r "nuget: Fsdk, Version=0.9.99--date20260525-0605.git-a5cfc39"
 
 open Fsdk
 
@@ -17,7 +17,7 @@ let targetSol =
     match args with
     | [] -> None
     | head :: [] -> Some head
-    | head :: tail -> failwithf "Too many arguments: %A" args
+    | _head :: _tail -> failwithf "Too many arguments: %A" args
 
 let rootDir = Path.Combine(__SOURCE_DIRECTORY__, "..") |> DirectoryInfo
 let currentDir = Directory.GetCurrentDirectory() |> DirectoryInfo

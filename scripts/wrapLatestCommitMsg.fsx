@@ -10,7 +10,7 @@ open System.Linq
 
 #load "../src/FileConventions/Library.fs"
 
-#r "nuget: Fsdk, Version=0.6.1--date20260403-0728.git-c9a0eae"
+#r "nuget: Fsdk, Version=0.9.99--date20260525-0605.git-a5cfc39"
 
 open Fsdk
 open Fsdk.Process
@@ -64,7 +64,8 @@ Fsdk
             Arguments =
                 $"commit --amend --message \"{EscapeDoubleQuotes newCommitMsg}\""
         },
-        Echo.Off
+        Echo.OutputOnly
     )
     .UnwrapDefault()
     .Trim()
+|> ignore<string>

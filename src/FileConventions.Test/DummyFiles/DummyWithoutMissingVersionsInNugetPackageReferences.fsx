@@ -3,4 +3,4 @@
 open System.IO
 open System
 
-#r "nuget: Fsdk, Version=0.6.1--date20260403-0728.git-c9a0eae"
+#r "nuget: Fsdk, Version=0.9.99--date20260525-0605.git-a5cfc39"

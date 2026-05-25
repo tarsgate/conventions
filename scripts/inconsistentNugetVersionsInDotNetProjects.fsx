@@ -6,11 +6,11 @@ open System.IO
 #r "System.Core.dll"
 #r "System.Xml.Linq.dll"
 
-#r "nuget: Fsdk, Version=0.6.1--date20260403-0728.git-c9a0eae"
+#r "nuget: Fsdk, Version=0.9.99--date20260525-0605.git-a5cfc39"
 
 open Fsdk
 
-#r "nuget: Microsoft.Build, Version=16.11.0"
+#r "nuget: Microsoft.Build, Version=17.8.43"
 
 #load "../src/FileConventions/Helpers.fs"
 #load "../src/FileConventions/NugetVersionsCheck.fs"
