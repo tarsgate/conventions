@@ -705,14 +705,26 @@ let ContainsUnacceptableTypeScript(fileInfo: FileInfo) =
                         substractAllSubstringsFromString afterPart
 
                     contentSoFar.AppendLine cleanString |> ignore<StringBuilder>
+
                     findContentToAnalyze tail contentSoFar maybeEndMarker
 
-    let wholeFileContentButTheStrings = StringBuilder()
+    let fileLines = File.ReadLines fileInfo.FullName |> Seq.toList
 
-    findContentToAnalyze
-        (File.ReadLines fileInfo.FullName)
-        wholeFileContentButTheStrings
-        None
+    let hasEslintDisableComment =
+        match fileLines with
+        | firstLine :: _ ->
+            firstLine
+                .Trim()
+                .StartsWith "/* eslint @typescript-eslint/no-explicit-any: \"off\" */"
+        | [] -> false
 
-    let contentToAnalyze: string = wholeFileContentButTheStrings.ToString()
-    anyRegex.IsMatch(contentToAnalyze)
+    if hasEslintDisableComment then
+        false
+    else
+
+        let wholeFileContentButTheStrings = StringBuilder()
+
+        findContentToAnalyze fileLines wholeFileContentButTheStrings None
+
+        let contentToAnalyze: string = wholeFileContentButTheStrings.ToString()
+        anyRegex.IsMatch(contentToAnalyze)
