@@ -601,6 +601,13 @@ let deleteRegex = Regex(@"\bdelete\b", RegexOptions.Compiled)
 let stringCharMarkers = [ '"'; '\''; '`' ] |> Seq.map string
 let singleLineCommentMarker = "//"
 let multiLineCommentMarker = "/*"
+let anyEslintRuleName = "@typescript-eslint/no-explicit-any"
+
+let anyEslintDisableNextLineComment =
+    $"// eslint-disable-next-line {anyEslintRuleName}"
+
+let anyEsLintDisableRuleForWholeFileComment =
+    $"/* eslint {anyEslintRuleName}: \"off\" */"
 
 let commentMarkers =
     [
@@ -713,19 +720,40 @@ let ContainsUnacceptableTypeScript(fileInfo: FileInfo) =
 
     let fileLines = File.ReadLines fileInfo.FullName |> Seq.toList
 
-    let hasEslintDisableComment =
+    let hasFileLevelEslintDisableComment =
         match fileLines with
         | firstLine :: _ ->
             firstLine
                 .Trim()
-                .StartsWith "/* eslint @typescript-eslint/no-explicit-any: \"off\" */"
+                .StartsWith anyEsLintDisableRuleForWholeFileComment
         | [] -> false
 
     let contentToAnalyze = getTypeScriptContentToAnalyze fileLines
-    let hasAny = anyRegex.IsMatch(contentToAnalyze)
     let hasDelete = deleteRegex.IsMatch(contentToAnalyze)
 
-    if hasEslintDisableComment then
-        hasDelete
-    else
-        hasAny || hasDelete
+    let hasAny =
+        if hasFileLevelEslintDisableComment then
+            false
+        else
+            let filteredLines =
+                fileLines
+                |> Seq.mapi(fun lineIndex line -> lineIndex, line)
+                |> Seq.choose(fun (lineIndex, line) ->
+                    let prevLineHasDisableNextLine =
+                        if lineIndex > 0 then
+                            fileLines.[lineIndex - 1]
+                                .Trim()
+                                .StartsWith anyEslintDisableNextLineComment
+                        else
+                            false
+
+                    if prevLineHasDisableNextLine then
+                        None
+                    else
+                        Some line
+                )
+
+            let filteredContent = getTypeScriptContentToAnalyze filteredLines
+            anyRegex.IsMatch(filteredContent)
+
+    hasAny || hasDelete
