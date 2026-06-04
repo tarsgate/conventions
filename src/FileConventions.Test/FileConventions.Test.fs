@@ -324,7 +324,7 @@ let DetectInconsistentVersionsInGitHubCIWorkflow1() =
         ))
 
     Assert.That(
-        DetectInconsistentVersionsInGitHubCIWorkflow fileInfo,
+        DetectInconsistentVersionsInGitHubCIWorkflow fileInfo Map.empty,
         Is.EqualTo false
     )
 
@@ -342,7 +342,7 @@ let DetectInconsistentVersionsInGitHubCIWorkflow2() =
         ))
 
     Assert.That(
-        DetectInconsistentVersionsInGitHubCIWorkflow fileInfo,
+        DetectInconsistentVersionsInGitHubCIWorkflow fileInfo Map.empty,
         Is.EqualTo true
     )
 
@@ -360,7 +360,7 @@ let DetectInconsistentVersionsInGitHubCIWorkflow3() =
         ))
 
     Assert.That(
-        DetectInconsistentVersionsInGitHubCIWorkflow fileInfo,
+        DetectInconsistentVersionsInGitHubCIWorkflow fileInfo Map.empty,
         Is.EqualTo true
     )
 
@@ -378,7 +378,7 @@ let DetectInconsistentVersionsInGitHubCIWorkflow4() =
         ))
 
     Assert.That(
-        DetectInconsistentVersionsInGitHubCIWorkflow fileInfo,
+        DetectInconsistentVersionsInGitHubCIWorkflow fileInfo Map.empty,
         Is.EqualTo false
     )
 
@@ -405,7 +405,7 @@ let DetectInconsistentVersionsInGitHubCIWorkflow5() =
         })
 
     Assert.That(
-        DetectInconsistentVersionsInGitHubCIWorkflow fileInfo,
+        DetectInconsistentVersionsInGitHubCIWorkflow fileInfo Map.empty,
         Is.EqualTo true
     )
 
@@ -423,7 +423,7 @@ let DetectInconsistentVersionsInGitHubCIWorkflow6() =
         ))
 
     Assert.That(
-        DetectInconsistentVersionsInGitHubCIWorkflow fileInfo,
+        DetectInconsistentVersionsInGitHubCIWorkflow fileInfo Map.empty,
         Is.EqualTo true
     )
 
@@ -441,8 +441,27 @@ let DetectInconsistentVersionsInGitHubCIWorkflow7() =
         ))
 
     Assert.That(
-        DetectInconsistentVersionsInGitHubCIWorkflow fileInfo,
+        DetectInconsistentVersionsInGitHubCIWorkflow fileInfo Map.empty,
         Is.EqualTo true
+    )
+
+[<Test>]
+let DetectInconsistentVersionsInGitHubCIWorkflow8() =
+    let fileInfo =
+        (Seq.singleton(
+            FileInfo(
+                Path.Combine(
+                    dummyFilesDirectory.FullName,
+                    "DummyCIWithSameSetupPulumiVersionInEnv.yml"
+                )
+            )
+        ))
+
+    let envDict = Map.ofList [ "PULUMI_VERSION", "3.40.0" ]
+
+    Assert.That(
+        DetectInconsistentVersionsInGitHubCIWorkflow fileInfo envDict,
+        Is.EqualTo false
     )
 
 
@@ -453,7 +472,10 @@ let DetectInconsistentVersionsInGitHubCI1() =
             Path.Combine(dummyFilesDirectory.FullName, "DummyWorkflows")
         )
 
-    Assert.That(DetectInconsistentVersionsInGitHubCI fileInfo, Is.EqualTo true)
+    Assert.That(
+        DetectInconsistentVersionsInGitHubCI fileInfo Map.empty,
+        Is.EqualTo true
+    )
 
 [<Test>]
 let DetectInconsistentVersionsInGitHubCI2() =
@@ -462,7 +484,10 @@ let DetectInconsistentVersionsInGitHubCI2() =
             Path.Combine(dummyFilesDirectory.FullName, "DummyWorkflowsWithEnv")
         )
 
-    Assert.That(DetectInconsistentVersionsInGitHubCI fileInfo, Is.EqualTo true)
+    Assert.That(
+        DetectInconsistentVersionsInGitHubCI fileInfo Map.empty,
+        Is.EqualTo true
+    )
 
 [<Test>]
 let DetectInconsistentVersionsInGitHubCI3() =
@@ -474,7 +499,10 @@ let DetectInconsistentVersionsInGitHubCI3() =
             )
         )
 
-    Assert.That(DetectInconsistentVersionsInGitHubCI fileInfo, Is.EqualTo true)
+    Assert.That(
+        DetectInconsistentVersionsInGitHubCI fileInfo Map.empty,
+        Is.EqualTo true
+    )
 
 [<Test>]
 let DetectInconsistentVersionsInNugetRefsInFSharpScripts1() =
