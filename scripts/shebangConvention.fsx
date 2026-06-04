@@ -11,11 +11,14 @@ open System.IO
 
 let rootDir = Path.Combine(__SOURCE_DIRECTORY__, "..") |> DirectoryInfo
 
+printfn "Checking base directory: %s" rootDir.FullName
+
 let invalidFiles =
-    Helpers.GetInvalidFiles
-        rootDir
-        "*.fsx"
-        (fun fileInfo -> not(FileConventions.HasCorrectShebang fileInfo))
+    Helpers.GetFiles rootDir "*.fsx"
+    |> Seq.filter(fun fileInfo ->
+        printfn "Checking file: %s" fileInfo.FullName
+        not(FileConventions.HasCorrectShebang fileInfo)
+    )
 
 Helpers.AssertNoInvalidFiles
     invalidFiles

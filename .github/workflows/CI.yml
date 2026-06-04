@@ -205,7 +205,7 @@ jobs:
 
       - name: Check all files end with EOL
         run: dotnet fsi scripts/eofConvention.fsx
-      - name: Check all .fsx scripts have shebang
+      - name: Check all .fsx scripts have (proper) shebang
         run: dotnet fsi scripts/shebangConvention.fsx
       - name: Check all F# scripts have execute permission
         run: dotnet fsi scripts/executableConvention.fsx
