@@ -1,0 +1,32 @@
+name: Pi Agent
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  pi-agent:
+    if: |
+      contains(fromJson('["knocte", "webwarrior-ws"]'), github.actor) &&
+      startsWith(github.event.comment.body, '/pi ')
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Run Pi agent
+        uses: shaftoe/pi-coding-agent-action@develop
+        with:
+          github_token: ${{ secrets.GH_REPO_BOT_ACCESS_TOKEN }}
+          provider: ppq
+          model: autoclaw
+          token: ${{ secrets.PPQ_API_KEY }}
+          extensions: |
+            npm:awto-pi-lot
