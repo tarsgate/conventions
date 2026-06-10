@@ -15,12 +15,30 @@ open FSharp.Data
 open Fsdk
 open Fsdk.Process
 
+let errUsage = (1, $"Usage: dotnet fsi {__SOURCE_FILE__} <prUrl>")
+
+let errInvalidPrUrl =
+    (2,
+     "Invalid PR URL. Expected format: https://github.com/<owner>/<repo>/pull/<number>")
+
+let ErrFailedToFetchPrData exMsg =
+    (3, sprintf "Failed to fetch PR data from GitHub API: %s" exMsg)
+
+let ErrFailedToExtractHeadRepoUrl exMsg =
+    (4, sprintf "Failed to extract head repo URL from PR data: %s" exMsg)
+
+let ErrFailedToExtractHeadBranch exMsg =
+    (5, sprintf "Failed to extract head branch from PR data: %s" exMsg)
+
+let errCloneWorkTreeFailed = (6, "cloneWorkTree.fsx failed")
+
 let args = Misc.FsxOnlyArguments()
 
 if args.Length <> 1 then
-    Console.Error.WriteLine $"Usage: dotnet fsi {__SOURCE_FILE__} <prUrl>"
+    let exitCode, errMsg = errUsage
+    Console.Error.WriteLine errMsg
 
-    Environment.Exit 1
+    Environment.Exit exitCode
 
 let prUrl = args.[0]
 
@@ -35,10 +53,10 @@ let prRegex =
 let regexMatch = prRegex.Match prUrl
 
 if not regexMatch.Success then
-    Console.Error.WriteLine
-        "Invalid PR URL. Expected format: https://github.com/<owner>/<repo>/pull/<number>"
+    let exitCode, errMsg = errInvalidPrUrl
+    Console.Error.WriteLine errMsg
 
-    Environment.Exit 2
+    Environment.Exit exitCode
 
 let owner = regexMatch.Groups.["owner"].Value
 let repo = regexMatch.Groups.["repo"].Value
@@ -56,12 +74,11 @@ let response =
         httpClient.GetStringAsync(apiUrl).Result
     with
     | ex ->
-        Console.Error.WriteLine(
-            $"Failed to fetch PR data from GitHub API: {ex.Message}"
-        )
+        let exitCode, errMsg = ErrFailedToFetchPrData ex.Message
+        Console.Error.WriteLine errMsg
 
-        Environment.Exit 3
-        failwith "unreachableAfterApiFailure"
+        Environment.Exit exitCode
+        failwith <| "Unreachable because of: " + errMsg
 
 let prJson = JsonValue.Parse response
 
@@ -74,12 +91,11 @@ let headRepoUrl =
             .AsString()
     with
     | ex ->
-        Console.Error.WriteLine(
-            $"Failed to extract head repo URL from PR data: {ex.Message}"
-        )
+        let exitCode, errMsg = ErrFailedToExtractHeadRepoUrl ex.Message
+        Console.Error.WriteLine errMsg
 
-        Environment.Exit 4
-        failwith "unreachableAfterRepoUrlExtractionFailure"
+        Environment.Exit exitCode
+        failwith <| "Unreachable because of: " + errMsg
 
 let headBranch =
     try
@@ -89,12 +105,11 @@ let headBranch =
             .AsString()
     with
     | ex ->
-        Console.Error.WriteLine(
-            $"Failed to extract head branch from PR data: {ex.Message}"
-        )
+        let exitCode, errMsg = ErrFailedToExtractHeadBranch ex.Message
+        Console.Error.WriteLine errMsg
 
-        Environment.Exit 5
-        failwith "unreachableAfterBranchExtractionFailure"
+        Environment.Exit exitCode
+        failwith <| "Unreachable because of: " + errMsg
 
 Console.WriteLine $"PR #{prNumber} source repo: {headRepoUrl}"
 Console.WriteLine $"PR #{prNumber} source branch: {headBranch}"
@@ -113,6 +128,10 @@ let dotnetFsi =
 let proc = Process.Execute(dotnetFsi, Echo.All)
 
 match proc.Result with
-| Error _ -> Environment.Exit 6
+| Error _ ->
+    let exitCode, errMsg = errCloneWorkTreeFailed
+    Console.Error.WriteLine errMsg
+
+    Environment.Exit exitCode
 | WarningsOrAmbiguous _
 | Success _ -> ()
