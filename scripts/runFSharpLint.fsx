@@ -25,6 +25,8 @@ let currentDir = Directory.GetCurrentDirectory() |> DirectoryInfo
 let targetDir, fallbackDir =
     Helpers.PreferLessDeeplyNestedDir currentDir rootDir
 
+printfn "Checking base directory: %s" targetDir.FullName
+
 let targetSolution =
     match targetSol with
     | Some solFilename ->
@@ -161,7 +163,12 @@ let allFiles = Fsdk.Misc.GetAllFilesRecursively targetDir |> Seq.map FileInfo
 let fsxFiles =
     allFiles |> Seq.filter(fun filename -> filename.Extension = ".fsx")
 
-let results = fsxFiles |> Seq.map RunFSharpLint
+let results =
+    fsxFiles
+    |> Seq.map(fun file ->
+        printfn "Checking file: %s" file.FullName
+        RunFSharpLint file
+    )
 
 let violationsExist =
     results

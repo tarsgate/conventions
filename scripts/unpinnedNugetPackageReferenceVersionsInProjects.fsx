@@ -14,11 +14,14 @@ let currentDir = Directory.GetCurrentDirectory() |> DirectoryInfo
 
 let targetDir, _ = Helpers.PreferLessDeeplyNestedDir currentDir rootDir
 
+printfn "Checking base directory: %s" targetDir.FullName
+
 let invalidFiles =
-    Helpers.GetInvalidFiles
-        targetDir
-        "*.*proj"
-        FileConventions.DetectAsteriskInPackageReferenceItems
+    Helpers.GetFiles targetDir "*.*proj"
+    |> Seq.filter(fun fileInfo ->
+        printfn "Checking file: %s" fileInfo.FullName
+        FileConventions.DetectAsteriskInPackageReferenceItems fileInfo
+    )
 
 let message =
     "The following files shouldn't use asterisk (*) in PackageReference items of .NET projects."

@@ -35,8 +35,11 @@ Fsdk
 
 let rootDir = Path.Combine(__SOURCE_DIRECTORY__, "..") |> DirectoryInfo
 
+printfn "Checking base directory: %s" rootDir.FullName
+
 Helpers.GetFiles rootDir "*.fsx"
 |> Seq.iter(fun fileInfo ->
+    printfn "Checking file: %s" fileInfo.FullName
     Fsdk
         .Process
         .Execute(

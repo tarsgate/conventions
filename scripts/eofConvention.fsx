@@ -13,11 +13,14 @@ open type FileConventions.EolAtEof
 
 let rootDir = Path.Combine(__SOURCE_DIRECTORY__, "..") |> DirectoryInfo
 
+printfn "Checking base directory: %s" rootDir.FullName
+
 let invalidFiles =
-    Helpers.GetInvalidFiles
-        rootDir
-        "*.*"
-        (fun fileInfo -> FileConventions.EolAtEof fileInfo = False)
+    Helpers.GetFiles rootDir "*.*"
+    |> Seq.filter(fun fileInfo ->
+        printfn "Checking file: %s" fileInfo.FullName
+        FileConventions.EolAtEof fileInfo = False
+    )
 
 Helpers.AssertNoInvalidFiles
     invalidFiles

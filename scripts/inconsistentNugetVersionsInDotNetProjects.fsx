@@ -44,6 +44,10 @@ let target =
                 "'%s' argument is invalid. You should enter an .sln file or run this script on current directory"
                 singleArg
 
+printfn "Checking target: %s"
+    (match target with
+     | ScriptTarget.Folder di -> di.FullName
+     | ScriptTarget.Solution fi -> fi.FullName)
 
 let nugetSolutionPackagesDir =
     Path.Combine(currentDirectory, "packages") |> DirectoryInfo

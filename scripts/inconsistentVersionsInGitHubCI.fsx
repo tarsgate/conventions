@@ -32,6 +32,8 @@ let targetDir =
             githubWorkflowsDirFromRootDir
         |> fst
 
+printfn "Checking base directory: %s" targetDir.FullName
+
 let inconsistentVersionsInGitHubCI =
     FileConventions.DetectInconsistentVersionsInGitHubCI targetDir
 

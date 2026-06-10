@@ -33,6 +33,9 @@ let targetDirs =
 
         dirs
 
+for dir in targetDirs do
+    printfn "Checking base directory: %s" dir.FullName
+
 let versionsMap =
     let fsxFiles, projectFiles =
         CombinedVersionCheck.GetFsxAndProjectFilesForDirectories targetDirs

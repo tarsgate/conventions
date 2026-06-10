@@ -11,6 +11,8 @@ open System.IO
 
 let rootDir = Path.Combine(__SOURCE_DIRECTORY__, "..") |> DirectoryInfo
 
+printfn "Checking base directory: %s" rootDir.FullName
+
 let validExtensions =
     seq {
         ".yml"
@@ -22,10 +24,11 @@ let validExtensions =
 let invalidFiles =
     validExtensions
     |> Seq.collect(fun ext ->
-        Helpers.GetInvalidFiles
-            rootDir
-            ("*" + ext)
-            FileConventions.NonVerboseFlags
+        Helpers.GetFiles rootDir ("*" + ext)
+        |> Seq.filter(fun fileInfo ->
+            printfn "Checking file: %s" fileInfo.FullName
+            FileConventions.NonVerboseFlags fileInfo
+        )
     )
 
 let message = "Please don't use non-verbose flags in the following files:"

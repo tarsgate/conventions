@@ -11,11 +11,14 @@ open System.IO
 
 let rootDir = Path.Combine(__SOURCE_DIRECTORY__, "..") |> DirectoryInfo
 
+printfn "Checking base directory: %s" rootDir.FullName
+
 let invalidFiles =
-    Helpers.GetInvalidFiles
-        rootDir
-        "*.fsx"
-        FileConventions.DetectMissingVersionsInNugetPackageReferences
+    Helpers.GetFiles rootDir "*.fsx"
+    |> Seq.filter(fun fileInfo ->
+        printfn "Checking file: %s" fileInfo.FullName
+        FileConventions.DetectMissingVersionsInNugetPackageReferences fileInfo
+    )
 
 let message =
     "The following files shouldn't miss the version number in `#r \"nuget: ` refs of F# scripts."

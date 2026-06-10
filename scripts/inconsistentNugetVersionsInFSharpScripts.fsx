@@ -14,9 +14,12 @@ let currentDir = Directory.GetCurrentDirectory() |> DirectoryInfo
 
 let targetDir, _ = Helpers.PreferLessDeeplyNestedDir currentDir rootDir
 
+printfn "Checking base directory: %s" targetDir.FullName
+
 let inconsistentVersionsInFsharpScripts =
     Helpers.GetFiles targetDir "*.fsx"
     |> Seq.filter(fun file ->
+        printfn "Checking file: %s" file.FullName
         targetDir = rootDir
         || not(file.Directory.FullName.StartsWith rootDir.FullName)
     )

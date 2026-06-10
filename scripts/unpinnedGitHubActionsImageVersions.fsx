@@ -11,11 +11,14 @@ open System.IO
 
 let rootDir = Path.Combine(__SOURCE_DIRECTORY__, "..") |> DirectoryInfo
 
+printfn "Checking base directory: %s" rootDir.FullName
+
 let invalidFiles =
-    Helpers.GetInvalidFiles
-        rootDir
-        "*.yml"
-        FileConventions.DetectUnpinnedVersionsInGitHubCI
+    Helpers.GetFiles rootDir "*.yml"
+    |> Seq.filter(fun fileInfo ->
+        printfn "Checking file: %s" fileInfo.FullName
+        FileConventions.DetectUnpinnedVersionsInGitHubCI fileInfo
+    )
 
 let message =
     "The following files shouldn't contain `-latest` in `runs-on:` or `container: image:` GitHubCI tags."

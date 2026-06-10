@@ -13,13 +13,16 @@ let currentDir = Directory.GetCurrentDirectory() |> DirectoryInfo
 
 let targetDir, _ = Helpers.PreferLessDeeplyNestedDir currentDir rootDir
 
+printfn "Checking base directory: %s" targetDir.FullName
+
 let invalidFiles =
     let filter fileInfo =
+        printfn "Checking file: %s" fileInfo.FullName
         not(FileConventions.IsExecutable fileInfo)
 
     [ "*.fsx"; "*.sh" ]
     |> Seq.collect(fun pattern ->
-        Helpers.GetInvalidFiles targetDir pattern filter
+        Helpers.GetFiles targetDir pattern |> Seq.filter filter
     )
 
 Helpers.AssertNoInvalidFiles
