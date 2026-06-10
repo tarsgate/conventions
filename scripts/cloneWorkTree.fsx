@@ -102,17 +102,42 @@ match worktreeProc.Result with
 // 8) cd into featureBranchName and create branch
 Directory.SetCurrentDirectory featureBranchName
 
+let branchExists =
+    let output =
+        Process
+            .Execute(
+                {
+                    Command = "git"
+                    Arguments = sprintf "branch --list %s" featureBranchName
+                },
+                Echo.Off
+            )
+            .UnwrapDefault()
+            .Trim()
+
+    output.Contains featureBranchName
+
+let checkoutArgs =
+    if branchExists then
+        sprintf "switch %s" featureBranchName
+    else
+        sprintf "checkout -b %s" featureBranchName
+
 let gitCheckout =
     {
         Command = "git"
-        Arguments = sprintf "checkout -b %s" featureBranchName
+        Arguments = checkoutArgs
     }
 
 let checkoutProc = Process.Execute(gitCheckout, Echo.All)
 
 match checkoutProc.Result with
 | Error _ ->
-    Console.Error.WriteLine "Git checkout -b failed."
+    if branchExists then
+        Console.Error.WriteLine("Git switch failed.")
+    else
+        Console.Error.WriteLine("Git checkout -b failed.")
+
     Environment.Exit 5
 | WarningsOrAmbiguous _
 | Success _ -> ()
