@@ -171,3 +171,68 @@ Console.WriteLine(
         branchName
         repoName
 )
+
+// 9) If repo is a GitHub fork, rename 'origin' remote to '<owner>Fork'
+let isGitHubUrl =
+    repoUrl.Contains("github.com", StringComparison.OrdinalIgnoreCase)
+
+if isGitHubUrl then
+    let ghOwner =
+        let pathPart =
+            if repoUrl.StartsWith("git@", StringComparison.OrdinalIgnoreCase) then
+                let colonIndex = repoUrl.IndexOf ':'
+                repoUrl.Substring(colonIndex + 1)
+            else
+                (Uri repoUrl).AbsolutePath.TrimStart '/'
+
+        pathPart.TrimEnd('/').Split('/').[0]
+
+    use httpClient = new System.Net.Http.HttpClient()
+
+    // required or HTTP call will fail
+    httpClient.DefaultRequestHeaders.UserAgent.ParseAdd "dotnet-fsi"
+
+    let apiUrl = sprintf "https://api.github.com/repos/%s/%s" ghOwner repoName
+
+    let maybeResponse =
+        try
+            httpClient.GetStringAsync apiUrl
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
+            |> Some
+        with
+        | _ ->
+            Console.Error.WriteLine(
+                "Could not check whether the repo is a GitHub fork. Skipping remote rename."
+            )
+
+            None
+
+    match maybeResponse with
+    | None -> ()
+    | Some response ->
+        let isFork = response.Contains "\"fork\":true"
+
+        if isFork then
+            let newRemoteName = sprintf "%sFork" ghOwner
+            let renameArgs = sprintf "remote rename origin %s" newRemoteName
+
+            let gitRemoteRename =
+                {
+                    Command = "git"
+                    Arguments = renameArgs
+                }
+
+            let renameProc = Process.Execute(gitRemoteRename, Echo.All)
+
+            match renameProc.Result with
+            | Error _ ->
+                Console.Error.WriteLine(
+                    sprintf
+                        "Failed to rename remote 'origin' to '%s'."
+                        newRemoteName
+                )
+
+                Environment.Exit 6
+            | WarningsOrAmbiguous _
+            | Success _ -> ()
