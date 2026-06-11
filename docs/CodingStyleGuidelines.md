@@ -475,7 +475,7 @@
             UseExternalData(data)
         ```
 
-        In TypeScript, the equivalent of F#'s `Option.ofObj()` exists in `fp-sdk`'s: `OptionHelpers.ofObj()`, but if you do not need to use the value and just check for absence, you can still avoid typing nullish keywords by using `TypeHelpers.isNullOrUndefined()`:
+        In TypeScript, the equivalent of F#'s `Option.ofObj()` exists in `fp-sdk`'s: `Option.ofObj()`, but if you do not need to use the value and just check for absence, you can still avoid typing nullish keywords by using `Check.isNullOrUndefined()`:
 
         Example (bad):
         ```typescript
@@ -488,9 +488,9 @@
 
         Improved code:
         ```typescript
-        import { TypeHelpers } from "fp-sdk";
+        import { Check } from "fp-sdk";
 
-        if (TypeHelpers.IsNullOrUndefined(foo))
+        if (Check.isNullOrUndefined(foo))
         {
             return 0;
         }

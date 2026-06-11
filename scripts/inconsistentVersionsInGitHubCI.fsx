@@ -2,9 +2,9 @@
 
 open System.IO
 
+#r "nuget: FSharpx.Collections, Version=3.1.0"
 #r "nuget: Mono.Unix, Version=7.1.0-final.1.21458.1"
 #r "nuget: YamlDotNet, Version=16.1.3"
-
 #load "../src/FileConventions/Library.fs"
 #load "../src/FileConventions/Helpers.fs"
 

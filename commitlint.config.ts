@@ -2,6 +2,7 @@
 
 import { Helpers } from "./commitlint/helpers.js";
 import { Plugins } from "./commitlint/plugins.js";
+import { Dyn } from "fp-sdk";
 import { RuleConfigSeverity } from "@commitlint/types";
 
 const bodyMaxLineLength = 64;
@@ -17,7 +18,7 @@ function extractStringFromCommitlintParam(
     variable: any
 ): string {
     const str = Helpers.assertNotNone(
-        Helpers.convertAnyToString(variable),
+        Dyn.tryCast(variable).to(String),
         notStringErrorMessage(paramName)
     );
     return str;
@@ -115,7 +116,7 @@ export default {
                 },
 
                 "footer-notes-misplacement": ({ body }: { body: any }) => {
-                    const maybeBody = Helpers.convertAnyToString(body);
+                    const maybeBody = Dyn.tryCast(body).to(String);
                     return Plugins.footerNotesMisplacement(maybeBody);
                 },
 
@@ -189,7 +190,7 @@ export default {
 
                 "type-space-after-comma": ({ header }: { header: any }) => {
                     const headerStr = Helpers.assertNotNone(
-                        Helpers.convertAnyToString(header),
+                        Dyn.tryCast(header).to(String),
                         notStringErrorMessage("header")
                     );
 
@@ -201,7 +202,7 @@ export default {
                     _: any,
                     maxLineLength: number
                 ) => {
-                    const maybeBody = Helpers.convertAnyToString(body);
+                    const maybeBody = Dyn.tryCast(body).to(String);
                     return Plugins.bodySoftMaxLineLength(
                         maybeBody,
                         maxLineLength
@@ -209,7 +210,7 @@ export default {
                 },
 
                 "body-paragraph-line-min-length": ({ body }: { body: any }) => {
-                    const maybeBody = Helpers.convertAnyToString(body);
+                    const maybeBody = Dyn.tryCast(body).to(String);
                     return Plugins.bodyParagraphLineMinLength(
                         maybeBody,
                         headerMaxLineLength,

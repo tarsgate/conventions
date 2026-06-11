@@ -3,8 +3,10 @@
 open System
 open System.IO
 open System.Linq
+open System.Text
 open System.Text.RegularExpressions
 
+open FSharpx.Collections
 open Mono
 open Mono.Unix.Native
 open YamlDotNet.RepresentationModel
@@ -540,6 +542,8 @@ let DetectInconsistentVersionsInFSharpScripts
         DetectInconsistentVersionsInNugetRefsInFSharpScripts fsxFiles
 
 let allowedNonVerboseFlags =
+    // TODO: add flags 'd' and 'x' for "git clean" but with tests that detect
+    // "foo -ab" as invalid cause I workarounded the prob for now with "-fdx"
     seq {
         "unzip"
 
@@ -594,3 +598,165 @@ let NonVerboseFlags(fileInfo: FileInfo) =
 let IsExecutable(fileInfo: FileInfo) =
     let hasExecuteAccess = Syscall.access(fileInfo.FullName, AccessModes.X_OK)
     hasExecuteAccess = 0
+
+let anyRegex = Regex(@"\bany\b", RegexOptions.Compiled)
+let deleteRegex = Regex(@"\bdelete\b", RegexOptions.Compiled)
+let stringCharMarkers = [ '"'; '\''; '`' ] |> Seq.map string
+let singleLineCommentMarker = "//"
+let multiLineCommentMarker = "/*"
+let anyEslintRuleName = "@typescript-eslint/no-explicit-any"
+
+let anyEslintDisableNextLineComment =
+    $"// eslint-disable-next-line {anyEslintRuleName}"
+
+let anyEsLintDisableRuleForWholeFileComment =
+    $"/* eslint {anyEslintRuleName}: \"off\" */"
+
+let commentMarkers =
+    [
+        singleLineCommentMarker
+        multiLineCommentMarker
+    ]
+
+let ContainsUnacceptableTypeScript(fileInfo: FileInfo) =
+    let rec substractAllSubstringsFromString
+        (leString: string)
+        : string * Option<string> =
+        let substractFirstSubstringFromString
+            (leString: string)
+            : string * Option<string> =
+            let findEarliestSubstring
+                (text: string)
+                (targetSubstrings: seq<string>)
+                =
+                text
+                |> Seq.indexed
+                |> Seq.tryPick(fun (currentIndex, _) ->
+                    targetSubstrings
+                    |> Seq.tryFind(fun target ->
+                        // Check if the text contains the target starting at this specific index
+                        text.IndexOf(target, currentIndex) = currentIndex
+                    )
+                    |> Option.map(fun foundMatch -> (currentIndex, foundMatch))
+                )
+
+            let allMarkers = Seq.append stringCharMarkers commentMarkers
+
+            let maybeBeginIndexOfStringOrComment =
+                findEarliestSubstring leString allMarkers
+
+            match maybeBeginIndexOfStringOrComment with
+            | None -> (leString, None)
+            | Some(beginIndexOfString, marker) ->
+                let beforePart = leString.Substring(0, beginIndexOfString)
+
+                if marker = singleLineCommentMarker then
+                    (beforePart, None)
+                else
+                    let restOfString =
+                        leString.Substring(beginIndexOfString + 1)
+
+                    let endMarker =
+                        if marker = multiLineCommentMarker then
+                            "*/"
+                        else
+                            marker
+
+                    let endIndexOfString = restOfString.IndexOf endMarker
+
+                    if endIndexOfString < 0 then
+                        (beforePart, Some marker)
+                    else
+                        let afterPart =
+                            (restOfString.Substring(endIndexOfString + 1))
+
+                        (beforePart + afterPart, None)
+
+        let (substracted, maybeEndMarker) =
+            substractFirstSubstringFromString leString
+
+        match maybeEndMarker with
+        | None ->
+            if substracted = leString then
+                (substracted, None)
+            else
+                substractAllSubstringsFromString substracted
+        | Some lookingForThisEndMarker ->
+            (substracted, Some lookingForThisEndMarker)
+
+    let rec findContentToAnalyze
+        (nextLines: seq<string>)
+        (contentSoFar: StringBuilder)
+        (maybeLookingForThisEndMarker: Option<string>)
+        : unit =
+        match Seq.tryHeadTail nextLines with
+        | None -> ()
+        | Some(line, tail) ->
+            match maybeLookingForThisEndMarker with
+            | None ->
+                let (cleanString, maybeEndMarker) =
+                    substractAllSubstringsFromString line
+
+                contentSoFar.AppendLine cleanString |> ignore<StringBuilder>
+                findContentToAnalyze tail contentSoFar maybeEndMarker
+            | Some lookingForThisEndMarker ->
+                let indexOfEndMarker = line.IndexOf lookingForThisEndMarker
+
+                if indexOfEndMarker < 0 then
+                    findContentToAnalyze
+                        tail
+                        contentSoFar
+                        (Some lookingForThisEndMarker)
+                else
+                    let afterPart = line.Substring indexOfEndMarker
+
+                    let cleanString, maybeEndMarker =
+                        substractAllSubstringsFromString afterPart
+
+                    contentSoFar.AppendLine cleanString |> ignore<StringBuilder>
+                    findContentToAnalyze tail contentSoFar maybeEndMarker
+
+    let getTypeScriptContentToAnalyze(fileLines: seq<string>) : string =
+        let wholeFileContentButTheStrings = StringBuilder()
+        findContentToAnalyze fileLines wholeFileContentButTheStrings None
+        wholeFileContentButTheStrings.ToString()
+
+    let fileLines = File.ReadLines fileInfo.FullName |> Seq.toList
+
+    let hasFileLevelEslintDisableComment =
+        match fileLines with
+        | firstLine :: _ ->
+            firstLine
+                .Trim()
+                .StartsWith anyEsLintDisableRuleForWholeFileComment
+        | [] -> false
+
+    let contentToAnalyze = getTypeScriptContentToAnalyze fileLines
+    let hasDelete = deleteRegex.IsMatch(contentToAnalyze)
+
+    let hasAny =
+        if hasFileLevelEslintDisableComment then
+            false
+        else
+            let filteredLines =
+                fileLines
+                |> Seq.mapi(fun lineIndex line -> lineIndex, line)
+                |> Seq.choose(fun (lineIndex, line) ->
+                    let prevLineHasDisableNextLine =
+                        if lineIndex > 0 then
+                            fileLines.[lineIndex - 1]
+                                .Trim()
+                                .StartsWith anyEslintDisableNextLineComment
+                        else
+                            false
+
+                    if prevLineHasDisableNextLine then
+                        None
+                    else
+                        Some line
+                )
+
+            let filteredContent = getTypeScriptContentToAnalyze filteredLines
+            anyRegex.IsMatch(filteredContent)
+
+    hasAny || hasDelete

@@ -11,13 +11,7 @@ open System.IO
 
 let rootDir = Path.Combine(__SOURCE_DIRECTORY__, "..") |> DirectoryInfo
 
-let validExtensions =
-    seq {
-        ".yml"
-        ".fsx"
-        ".fs"
-        ".sh"
-    }
+let validExtensions = seq { ".ts" }
 
 let invalidFiles =
     validExtensions
@@ -25,9 +19,10 @@ let invalidFiles =
         Helpers.GetInvalidFiles
             rootDir
             ("*" + ext)
-            FileConventions.NonVerboseFlags
+            FileConventions.ContainsUnacceptableTypeScript
     )
 
-let message = "Please don't use non-verbose flags in the following files:"
+let message =
+    "Please don't use unacceptable TypeScript keywords (e.g. 'any') in the following files:"
 
 Helpers.AssertNoInvalidFiles invalidFiles message

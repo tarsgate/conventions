@@ -1,4 +1,4 @@
-import { Option, Some, None, Nothing, OptionHelpers } from "fp-sdk";
+import { Option, Some, None, Nothing } from "fp-sdk";
 import { abbr } from "./abbreviations.js";
 import { Helpers } from "./helpers.js";
 
@@ -95,7 +95,7 @@ export abstract class Plugins {
 
         const urls = Helpers.findUrls(rawStr);
 
-        const gitRepo = OptionHelpers.OfObj(process.env["GITHUB_REPOSITORY"]);
+        const gitRepo = Option.ofObj(process.env["GITHUB_REPOSITORY"]);
         if (gitRepo instanceof Some) {
             if (urls instanceof Some) {
                 for (const url of urls.value.entries()) {

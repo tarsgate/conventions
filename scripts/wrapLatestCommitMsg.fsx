@@ -5,6 +5,7 @@ open System
 open System.Text.RegularExpressions
 open System.Linq
 
+#r "nuget: FSharpx.Collections, Version=3.1.0"
 #r "nuget: Mono.Unix, Version=7.1.0-final.1.21458.1"
 #r "nuget: YamlDotNet, Version=16.1.3"
 

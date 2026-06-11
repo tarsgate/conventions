@@ -1,5 +1,4 @@
-import { None, Some, Option, Nothing, OptionHelpers } from "fp-sdk";
-import { TypeHelpers } from "./fpHelpers.js";
+import { None, Option } from "fp-sdk";
 
 export abstract class Helpers {
     public static errMessageSuffix =
@@ -16,19 +15,6 @@ export abstract class Helpers {
         } catch {
             return false;
         }
-    }
-
-    // to convert from 'any' type
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- method accepts any value by design
-    public static convertAnyToString(potentialString: any): Option<string> {
-        if (TypeHelpers.IsNullOrUndefined(potentialString)) {
-            return Nothing;
-        }
-        // this type check is required, otherwise, String(null) would give us the stupid string "null"
-        if (TypeHelpers.IsInstanceOf(potentialString, String)) {
-            return new Some(String(potentialString));
-        }
-        return Nothing;
     }
 
     public static assertNotNone(
@@ -92,7 +78,7 @@ export abstract class Helpers {
 
     public static findUrls(text: string) {
         const urlRegex = /(https?:\/\/[^\s]+)/g;
-        return OptionHelpers.OfObj(text.match(urlRegex));
+        return Option.ofObj(text.match(urlRegex));
     }
 
     public static isCommitUrl(url: string) {

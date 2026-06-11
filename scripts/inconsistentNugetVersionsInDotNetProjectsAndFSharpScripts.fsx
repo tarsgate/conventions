@@ -7,6 +7,7 @@ open System.IO
 
 #r "nuget: Fsdk, Version=0.9.99--date20260525-0605.git-a5cfc39"
 #r "nuget: Microsoft.Build, Version=17.8.43"
+#r "nuget: FSharpx.Collections, Version=3.1.0"
 #r "nuget: Mono.Unix, Version=7.1.0-final.1.21458.1"
 #r "nuget: YamlDotNet, Version=16.1.3"
 
