@@ -315,6 +315,58 @@ if isExistingClone then
             | WarningsOrAmbiguous _
             | Success _ -> ()
 
+    // Ensure the branch is included in fetch refspec if it exists on remote
+    if isUrl && branchExists then
+        let remoteOutputForSetBranches =
+            Process
+                .Execute(
+                    {
+                        Command = "git"
+                        Arguments = "remote --verbose"
+                    },
+                    Echo.Off
+                )
+                .UnwrapDefault()
+
+        let remoteNameForUrlOpt =
+            Misc.CrossPlatformStringSplitInLines remoteOutputForSetBranches
+            |> Seq.tryPick(fun line ->
+                let trimmed = line.Trim()
+
+                if
+                    not(String.IsNullOrEmpty trimmed)
+                    && trimmed.Contains repoUrl
+                then
+                    let parts =
+                        trimmed.Split(
+                            [| ' '; '\t' |],
+                            StringSplitOptions.RemoveEmptyEntries
+                        )
+
+                    if parts.Length > 0 then
+                        Some parts.[0]
+                    else
+                        None
+                else
+                    None
+            )
+
+        match remoteNameForUrlOpt with
+        | Some remoteName ->
+            Process.Execute(
+                {
+                    Command = "git"
+                    Arguments =
+                        sprintf
+                            "remote set-branches --add %s %s"
+                            remoteName
+                            branchName
+                },
+                Echo.All
+            )
+            |> ignore
+        | None -> ()
+
     // Fetch all remotes
     let fetchProc =
         Process.Execute(
