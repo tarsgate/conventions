@@ -12,7 +12,7 @@
         }
     },
     "typePrefixing": {
-        "enabled": false,
+        "enabled": true,
         "config": {
             "mode": "Always"
         }
