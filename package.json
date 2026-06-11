@@ -11,8 +11,8 @@
         "husky": "^9.0.0"
     },
     "scripts": {
-        "format": "(npx --no-install prettier --version || (echo '\nPlease install `prettier` via `npm install` first; if this problem persists, try `npm rebuild && npm install`' >&2 && exit 1)) && npx --no-install prettier --quote-props=consistent --write './**/*.{yml,ts}'",
-        "format:check": "(npx --no-install prettier --version || (echo '\nPlease install `prettier` via `npm install` first; if this problem persists, try `npm rebuild && npm install`' >&2 && exit 1)) && npx --no-install prettier --quote-props=consistent --check './**/*.{yml,ts}'",
+        "format": "bash ./scripts/format.sh --write",
+        "format:check": "bash ./scripts/format.sh --check",
         "test": "vitest --globals=true",
         "prepare": "husky"
     }

@@ -238,11 +238,6 @@ jobs:
         run: |
           # workaround for https://github.com/actions/runner/issues/2033
           git config --global --add safe.directory '*'
-      - name: fantomless
-        run: |
-          dotnet tool install fantomless-tool --version 4.7.997-prerelease
-          dotnet fantomless --recurse .
-          git diff --exit-code || (echo "Formatting did not match (see above diff), please run fantomless-tool" >&2 && exit 1)
 
       - name: Install commitlint&prettier's required dependencies
         run: |
@@ -262,15 +257,17 @@ jobs:
       - name: Install prettier
         run: npm install --verbose
 
-      - name: Run "prettier" to check the style of our TypeScript and YML code
+      - name: Run formatting tools to check the style of our F#&TypeScript&YML code
         run: |
           sudo npm run format
+
           # Since we changed file modes in the previous step we need the following command to
           # make git ignore mode changes in files and doesn't include them in the git diff command.
           git config core.fileMode false
           # Since after installing commitlint dependencies package.json file changes, we need to 
           # run the following command to ignore package.json file
           git restore package.json
+
           git diff --exit-code || (echo "Formatting did not match (see above diff), please run 'npm run format'" >&2 && exit 1)
 
       - name: Validate current commit (last commit) with commitlint
