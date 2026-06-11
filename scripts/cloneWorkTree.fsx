@@ -382,12 +382,19 @@ let baseBranch =
             .UnwrapDefault()
             .Trim()
 
-// 7) git worktree add <defaultBranch> <branchName>
+// 7) git worktree add
 let gitWorktreeAdd =
-    {
-        Command = "git"
-        Arguments = sprintf "worktree add %s %s" branchFolderName baseBranch
-    }
+    if branchExists then
+        {
+            Command = "git"
+            Arguments = sprintf "worktree add %s %s" branchFolderName baseBranch
+        }
+    else
+        {
+            Command = "git"
+            Arguments =
+                sprintf "worktree add -b %s %s" branchName branchFolderName
+        }
 
 let worktreeProc = Process.Execute(gitWorktreeAdd, Echo.All)
 
@@ -399,27 +406,8 @@ match worktreeProc.Result with
 | WarningsOrAmbiguous _
 | Success _ -> ()
 
-// 8) cd into branchName and create branch
+// 8) cd into branchName
 Directory.SetCurrentDirectory branchFolderName
-
-if not branchExists then
-    let checkoutArgs = sprintf "checkout -b %s" branchName
-
-    let gitCheckout =
-        {
-            Command = "git"
-            Arguments = checkoutArgs
-        }
-
-    let checkoutProc = Process.Execute(gitCheckout, Echo.All)
-
-    match checkoutProc.Result with
-    | Error _ ->
-        let exitCode, errMsg = errGitCheckoutFailed
-        Console.Error.WriteLine errMsg
-        Environment.Exit exitCode
-    | WarningsOrAmbiguous _
-    | Success _ -> ()
 
 Console.WriteLine(
     sprintf

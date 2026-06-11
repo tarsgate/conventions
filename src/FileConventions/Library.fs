@@ -545,6 +545,7 @@ let allowedNonVerboseFlags =
 
         // git
         "checkout -b"
+        "worktree add -b"
 
         // even if env in linux has --split-string=foo as equivalent to env -S, it
         // doesn't seem to be present in macOS' env man page and doesn't work either
