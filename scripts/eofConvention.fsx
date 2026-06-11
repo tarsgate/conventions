@@ -12,10 +12,13 @@ open System
 open type FileConventions.EolAtEof
 
 let rootDir = Path.Combine(__SOURCE_DIRECTORY__, "..") |> DirectoryInfo
+let currentDir = Directory.GetCurrentDirectory() |> DirectoryInfo
+
+let targetDir, _ = Helpers.PreferLessDeeplyNestedDir currentDir rootDir
 
 let invalidFiles =
     Helpers.GetInvalidFiles
-        rootDir
+        targetDir
         "*.*"
         (fun fileInfo -> FileConventions.EolAtEof fileInfo = False)
 

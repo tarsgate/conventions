@@ -10,10 +10,13 @@ open System.IO
 #load "../src/FileConventions/Helpers.fs"
 
 let rootDir = Path.Combine(__SOURCE_DIRECTORY__, "..") |> DirectoryInfo
+let currentDir = Directory.GetCurrentDirectory() |> DirectoryInfo
+
+let targetDir, _ = Helpers.PreferLessDeeplyNestedDir currentDir rootDir
 
 let invalidFiles =
     Helpers.GetInvalidFiles
-        rootDir
+        targetDir
         "*.yml"
         FileConventions.DetectUnpinnedVersionsInGitHubCI
 

@@ -34,8 +34,11 @@ Fsdk
 |> ignore<string>
 
 let rootDir = Path.Combine(__SOURCE_DIRECTORY__, "..") |> DirectoryInfo
+let currentDir = Directory.GetCurrentDirectory() |> DirectoryInfo
 
-Helpers.GetFiles rootDir "*.fsx"
+let targetDir, _ = Helpers.PreferLessDeeplyNestedDir currentDir rootDir
+
+Helpers.GetFiles targetDir "*.fsx"
 |> Seq.iter(fun fileInfo ->
     Fsdk
         .Process

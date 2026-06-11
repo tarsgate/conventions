@@ -10,6 +10,9 @@ open System.IO
 #load "../src/FileConventions/Helpers.fs"
 
 let rootDir = Path.Combine(__SOURCE_DIRECTORY__, "..") |> DirectoryInfo
+let currentDir = Directory.GetCurrentDirectory() |> DirectoryInfo
+
+let targetDir, _ = Helpers.PreferLessDeeplyNestedDir currentDir rootDir
 
 let validExtensions =
     seq {
@@ -23,7 +26,7 @@ let invalidFiles =
     validExtensions
     |> Seq.collect(fun ext ->
         Helpers.GetInvalidFiles
-            rootDir
+            targetDir
             ("*" + ext)
             FileConventions.NonVerboseFlags
     )
