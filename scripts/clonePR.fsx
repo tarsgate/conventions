@@ -87,7 +87,7 @@ let headRepoUrl =
         prJson
             .GetProperty("head")
             .GetProperty("repo")
-            .GetProperty("clone_url")
+            .GetProperty("ssh_url")
             .AsString()
     with
     | ex ->
