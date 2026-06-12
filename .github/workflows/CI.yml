@@ -9,6 +9,10 @@ on:
   schedule:
     - cron: "0 0 * * *"
 
+# needed for this workflow itself can post comments in the PR if it spawned from PR
+permissions:
+  pull-requests: write
+
 env:
   DOTNET_VERSION: "10.0"
   # As we use .NET>6 now, to run tools compiled for .NETv6 we need to set roll-forward to major
@@ -286,3 +290,43 @@ jobs:
       - name: Check commits 1 by 1
         if: github.event_name == 'pull_request'
         run: ./scripts/checkCommits1by1.fsx
+
+  # TODO: maybe move this job to be a workflow on its own? this way we would not
+  # need to hardcode all job names twice in the `needs` and `if` elements
+  ci-pr-failure-comment:
+    needs:
+      [
+        build-fs,
+        file-conventions-tests,
+        build-ts,
+        commitlint-plugins-tests,
+        sanity-check,
+      ]
+    if: |
+      always() && github.event_name == 'pull_request' &&
+      github.event.pull_request.user.login == 'nodefect' &&
+      (
+        needs.build-fs.result == 'failure' ||
+        needs.file-conventions-tests.result == 'failure' ||
+        needs.build-ts.result == 'failure' ||
+        needs.commitlint-plugins-tests.result == 'failure' ||
+        needs.sanity-check.result == 'failure'
+      )
+    runs-on: ubuntu-latest
+    container:
+      image: "ubuntu:26.04"
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '⚠️ **CI Build Failed!**\n\nHey @' +
+                context.payload.pull_request.user.login +
+                ', one or more CI jobs failed. Please check the workflow logs.'
+            })
