@@ -15,7 +15,7 @@ open Fsdk.Process
 
 let errTooManyArgs =
     (1,
-     $"Usage: dotnet fsi {__SOURCE_FILE__} [remoteName(optional)] [numberOfCommits(optional)]")
+     $"Usage: dotnet fsi {__SOURCE_FILE__} [remoteName] [numberOfCommits] [-f|--force]")
 
 let errSecondArgShouldBeIntHigherThanZero =
     (2, "Second argument should be an integer higher than zero")
@@ -203,16 +203,34 @@ let GetLastCommits(count: UInt32) =
 
 let remotes = Git.GetRemotes()
 
-let args = Misc.FsxOnlyArguments()
+let rawArgs = Misc.FsxOnlyArguments()
 
-if args.Length > 3 then
+let forceFlag =
+    {|
+        LongName = "--force"
+        ShortName = "-f"
+    |}
+
+let forceEnabled =
+    rawArgs
+    |> List.exists(fun arg ->
+        arg = forceFlag.ShortName || arg = forceFlag.LongName
+    )
+
+let nonFlagArgs =
+    rawArgs
+    |> List.filter(fun arg ->
+        arg <> forceFlag.ShortName && arg <> forceFlag.LongName
+    )
+
+if nonFlagArgs.Length > 2 then
     let exitCode, errMsg = errTooManyArgs
     Console.Error.WriteLine errMsg
     Environment.Exit exitCode
 
-let maybeRemote, maybeNumberOfCommits, force =
-    if args.Length > 1 then
-        match UInt32.TryParse args.[1] with
+let maybeRemote, maybeNumberOfCommits =
+    if nonFlagArgs.Length > 1 then
+        match UInt32.TryParse nonFlagArgs.[1] with
         | true, 0u ->
             let exitCode, errMsg = errSecondArgShouldBeIntHigherThanZero
             Console.Error.WriteLine errMsg
@@ -221,25 +239,19 @@ let maybeRemote, maybeNumberOfCommits, force =
             failwith <| "Unreachable because of: " + errMsg
         | true, num ->
             let numberOfCommits = Some num
-            let remote = Some args.[0]
+            let remote = Some nonFlagArgs.[0]
 
-            let force =
-                if args.Length = 3 then
-                    args.[2] = "-f" || args.[2] = "--force"
-                else
-                    false
-
-            remote, numberOfCommits, force
+            remote, numberOfCommits
         | _ ->
             let exitCode, errMsg = errSecondArgShouldBeInteger
             Console.Error.WriteLine errMsg
             Environment.Exit exitCode
 
             failwith <| "Unreachable because of: " + errMsg
-    elif args.Length = 0 then
-        None, None, false
-    else // if args.Length = 1 then
-        match UInt32.TryParse args.[0] with
+    elif nonFlagArgs.Length = 0 then
+        None, None
+    else // if nonFlagArgs.Length = 1 then
+        match UInt32.TryParse nonFlagArgs.[0] with
         | true, 0u ->
             let exitCode, errMsg = errSecondArgShouldBeIntHigherThanZero
             Console.Error.WriteLine errMsg
@@ -249,11 +261,11 @@ let maybeRemote, maybeNumberOfCommits, force =
         | true, num ->
             let numberOfCommits = Some num
             let remote = None
-            remote, numberOfCommits, false
+            remote, numberOfCommits
         | _ ->
             let numberOfCommits = None
-            let remote = Some(args.[0])
-            remote, numberOfCommits, false
+            let remote = Some(nonFlagArgs.[0])
+            remote, numberOfCommits
 
 let currentBranch = Git.GetCurrentBranch()
 
@@ -332,7 +344,7 @@ let commitsToBePushed =
 let numberOfCommitsToPush = commitsToBePushed.Length
 
 for commit in commitsToBePushed do
-    GitSpecificPush remote commit currentBranch force
+    GitSpecificPush remote commit currentBranch forceEnabled
 
 if numberOfCommitsToPush > 1 && remoteUrl.Contains "gitlab" then
     Console.WriteLine
