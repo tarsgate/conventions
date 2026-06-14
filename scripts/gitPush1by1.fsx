@@ -346,6 +346,10 @@ let numberOfCommitsToPush = commitsToBePushed.Length
 for commit in commitsToBePushed do
     GitSpecificPush remote commit currentBranch forceEnabled
 
+    // sleep a bit between pushes, otherwise CI statuses for a PR would just be
+    // collapsed into a single CI status at the last commit only
+    2.0 |> TimeSpan.FromSeconds |> System.Threading.Thread.Sleep
+
 if numberOfCommitsToPush > 1 && remoteUrl.Contains "gitlab" then
     Console.WriteLine
         "NOTE: if you have issues with pipelines being canceled, visit https://gitlab.com/yourUserNameOrOrgName/yourRepoName/-/settings/ci_cd"
