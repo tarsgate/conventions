@@ -515,7 +515,52 @@ match fetchProc.Result with
 
 let gitWorktreeAddArgs =
     if branchTargetInfo.ExistsAlready then
-        sprintf "%s %s" branchTargetInfo.SubFolderName branchTargetInfo.Name
+        // Use remote tracking ref to avoid ambiguity when multiple remotes have the same branch
+        let allRemoteNames =
+            AllRemotes initialState |> Map.toSeq |> Seq.map fst |> Seq.toList
+
+        let remotesWithBranch =
+            allRemoteNames
+            |> List.filter(fun remoteName ->
+                CheckRemoteBranchExists branchTargetInfo.Name remoteName
+            )
+
+        // Prefer upstream/origin over fork remotes
+        // TODO: improve this heuristic — consider checking which branch has more commits,
+        // or which branch's latest commit is more recent
+        let preferredRemote =
+            match remotesWithBranch with
+            | [] -> None // fallback
+            | singleRemote :: [] -> Some singleRemote
+            | _multipleRemotes ->
+                remotesWithBranch
+                |> List.tryFind(fun name -> name = "upstream")
+                |> Option.orElseWith(fun () ->
+                    remotesWithBranch
+                    |> List.tryFind(fun name -> name = "origin")
+                )
+                |> Option.orElseWith(fun () ->
+                    remotesWithBranch
+                    |> List.tryFind(fun name ->
+                        not(
+                            name.EndsWith(
+                                "Fork",
+                                StringComparison.OrdinalIgnoreCase
+                            )
+                        )
+                    )
+                )
+                |> Option.orElse(List.tryHead remotesWithBranch)
+
+        match preferredRemote with
+        | Some remote ->
+            sprintf
+                "%s %s/%s"
+                branchTargetInfo.SubFolderName
+                remote
+                branchTargetInfo.Name
+        | None ->
+            sprintf "%s %s" branchTargetInfo.SubFolderName branchTargetInfo.Name
     else
         sprintf "-b %s %s" branchTargetInfo.Name branchTargetInfo.SubFolderName
 
