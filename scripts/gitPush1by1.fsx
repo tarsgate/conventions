@@ -45,6 +45,13 @@ let ErrCurrentBranchIsUpToDateSoMaybeForcePush currentBranch remote =
          currentBranch
          remote)
 
+let ErrRemoteBranchDoesntExist remoteBranch remoteName =
+    (9,
+     sprintf
+         "Branch '%s' doesn't exist in remote '%s' so the tree cannot be walked. Thus please specify the number of commits as the 2nd argument."
+         remoteBranch
+         remoteName)
+
 // mimic https://stackoverflow.com/a/3230241/544947
 let GitSpecificPush
     (remoteName: string)
@@ -172,6 +179,31 @@ let FindUnpushedCommits (remoteName: string) (remoteBranch: string) =
                 newRemoteCommits
 
     GitFetch(Some remoteName)
+
+    let remoteBranchExistsCheck =
+        Process.Execute(
+            {
+                Command = "git"
+                Arguments =
+                    sprintf
+                        "show-ref --verify --quiet refs/remotes/%s/%s"
+                        remoteName
+                        remoteBranch
+            },
+            Echo.Off
+        )
+
+    match remoteBranchExistsCheck.Result with
+    | Error _ ->
+        let exitCode, errMsg =
+            ErrRemoteBranchDoesntExist remoteBranch remoteName
+
+        Console.Error.WriteLine errMsg
+        Environment.Exit exitCode
+        failwith <| "Unreachable because of: " + errMsg
+    | WarningsOrAmbiguous _
+    | Success _ -> ()
+
     findUnpushedCommits List.empty 0u List.empty
 
 let GetLastCommits(count: UInt32) =
