@@ -542,9 +542,11 @@ export abstract class Plugins {
     public static trailingWhitespace(rawStr: string) {
         let offence = false;
 
+        let lineIndex = 0;
         const lines = Helpers.splitByEOLs(rawStr, 1);
         let inCodeBlock = false;
         for (const line of lines) {
+            lineIndex++;
             if (Helpers.isCodeBlockDelimiter(line)) {
                 inCodeBlock = !inCodeBlock;
                 continue;
@@ -569,7 +571,7 @@ export abstract class Plugins {
 
         return [
             !offence,
-            `Please watch out for leading or ending trailing whitespace.` +
+            `Please watch out for leading or ending trailing whitespace: line ${lineIndex}.` +
                 Helpers.errMessageSuffix,
         ];
     }
