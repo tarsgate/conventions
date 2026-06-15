@@ -30,7 +30,7 @@ jobs:
             if (prs && prs.length > 0) {
               pr = prs[0];
             } else {
-              // Fallback for fork PRs where workflow_run.pull_requests is empty
+              // Fallback 1: query API by commit SHA (works for same-repo PRs)
               const { data: pulls } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -38,6 +38,22 @@ jobs:
               });
               if (pulls.length > 0) {
                 pr = pulls[0];
+              } else {
+                // Fallback 2: list open PRs by head repo + branch (works for fork PRs
+                // because the commit SHA may not exist in the base repo)
+                const headRepo = context.payload.workflow_run.head_repository;
+                const headBranch = context.payload.workflow_run.head_branch;
+                if (headRepo && headBranch) {
+                  const { data: pulls } = await github.rest.pulls.list({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    state: 'open',
+                    head: `${headRepo.owner.login}:${headBranch}`
+                  });
+                  if (pulls.length > 0) {
+                    pr = pulls[0];
+                  }
+                }
               }
             }
 
