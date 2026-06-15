@@ -11,6 +11,7 @@ on:
 
 # needed for this workflow itself can post comments in the PR if it spawned from PR
 permissions:
+  issues: write
   pull-requests: write
 
 env:
