@@ -25,14 +25,29 @@ jobs:
           WORKFLOW_RUN_URL: ${{ github.event.workflow_run.html_url }}
         with:
           script: |
+            let pr = null;
             const prs = context.payload.workflow_run.pull_requests;
-            if (!prs || prs.length === 0) {
+            if (prs && prs.length > 0) {
+              pr = prs[0];
+            } else {
+              // Fallback for fork PRs where workflow_run.pull_requests is empty
+              const { data: pulls } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: context.payload.workflow_run.head_sha
+              });
+              if (pulls.length > 0) {
+                pr = pulls[0];
+              }
+            }
+
+            if (!pr) {
               console.log('No PR associated with this workflow run, skipping.');
               return;
             }
 
             await github.rest.issues.createComment({
-              issue_number: prs[0].number,
+              issue_number: pr.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: '⚠️ **CI Build Failed!**\n\nHey @' +
