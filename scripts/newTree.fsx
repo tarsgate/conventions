@@ -3,6 +3,8 @@
 open System
 open System.IO
 open System.Linq
+open System.Net.Http
+open System.Text.RegularExpressions
 
 #r "System.Configuration"
 open System.Configuration
@@ -12,10 +14,16 @@ open System.Configuration
 open Fsdk
 open Fsdk.Process
 
+#r "nuget: FSharp.Data, Version=5.0.2"
+
+open FSharp.Data
+
+
 let initialDir = Directory.GetCurrentDirectory()
 
 let errUsage =
-    (1, $"Usage: dotnet fsi {__SOURCE_FILE__} <repoUrl|folderPath> [branchName]")
+    (1,
+     $"Usage: dotnet fsi {__SOURCE_FILE__} <repoUrl|folderPath|prUrl> [branchName]")
 
 let ErrDirectoryDoesNotExist path =
     (2, sprintf "Directory '%s' does not exist." path)
@@ -47,6 +55,19 @@ let ErrNotGitHubCannotDetermineRemoteName dir =
 let ErrFailedToRenameRemote newName =
     (10, sprintf "Failed to rename remote 'origin' to '%s'." newName)
 
+let errInvalidPrUrl =
+    (11,
+     "Invalid PR URL. Expected format: https://github.com/<owner>/<repo>/pull/<number>")
+
+let ErrFailedToFetchPrData exMsg =
+    (12, sprintf "Failed to fetch PR data from GitHub API: %s" exMsg)
+
+let ErrFailedToExtractHeadRepoUrl exMsg =
+    (13, sprintf "Failed to extract head repo URL from PR data: %s" exMsg)
+
+let ErrFailedToExtractHeadBranch exMsg =
+    (14, sprintf "Failed to extract head branch from PR data: %s" exMsg)
+
 type ArgType =
     | Url of fullUrl: string * owner: string * headBranch: string
     | FolderName
@@ -68,6 +89,32 @@ type BranchTargetInfo =
 let IsUrl(str: string) : bool =
     str.Contains("://")
     || str.StartsWith("git@", StringComparison.OrdinalIgnoreCase)
+
+let prUrlRegex =
+    Regex(
+        @"^https?://github\.com/(?<owner>[^/]+)/(?<repo>[^/]+)/pull/(?<number>\d+)/?$",
+        RegexOptions.IgnoreCase
+    )
+
+let TryParseGitHubPullRequestUrl
+    (str: string)
+    : Option<string * string * string> =
+    if not(str.Contains("github.com", StringComparison.OrdinalIgnoreCase)) then
+        None
+    else
+        let matchInfo = prUrlRegex.Match str
+
+        if matchInfo.Success then
+            Some(
+                matchInfo.Groups.["owner"].Value,
+                matchInfo.Groups.["repo"].Value,
+                matchInfo.Groups.["number"].Value
+            )
+        else
+            None
+
+let IsGitHubPullRequestUrl(str: string) : bool =
+    TryParseGitHubPullRequestUrl str |> Option.isSome
 
 let ExtractGhOwnerAndRepoNameFromUrl(maybeUrl: string) =
     if not(IsUrl maybeUrl) then
@@ -112,12 +159,13 @@ let ExtractGhOwnerAndRepoNameFromUrl(maybeUrl: string) =
 
     (owner, repoName)
 
+let CreateGitHubHttpClient() =
+    let httpClient = new HttpClient()
+    httpClient.DefaultRequestHeaders.UserAgent.ParseAdd "newTree.fsx"
+    httpClient
+
 let CheckIsGitHubFork (owner: string) (repo: string) : Option<bool> =
-    use httpClient = new System.Net.Http.HttpClient()
-
-    // required or HTTP call will fail
-    httpClient.DefaultRequestHeaders.UserAgent.ParseAdd "dotnet-fsi"
-
+    use httpClient = CreateGitHubHttpClient()
     let apiUrl = sprintf "https://api.github.com/repos/%s/%s" owner repo
 
     try
@@ -129,6 +177,63 @@ let CheckIsGitHubFork (owner: string) (repo: string) : Option<bool> =
         Some(response.Contains "\"fork\":true")
     with
     | _ -> None
+
+let ResolvePrUrl(prUrl: string) : string * string =
+    let owner, repo, prNumber =
+        match TryParseGitHubPullRequestUrl prUrl with
+        | Some(owner, repo, number) -> owner, repo, number
+        | None ->
+            let exitCode, errMsg = errInvalidPrUrl
+            Console.Error.WriteLine errMsg
+            Environment.Exit exitCode
+            failwith <| "Unreachable because of: " + errMsg
+
+    let apiUrl = $"https://api.github.com/repos/{owner}/{repo}/pulls/{prNumber}"
+
+    use httpClient = CreateGitHubHttpClient()
+
+    let response =
+        try
+            httpClient.GetStringAsync(apiUrl).Result
+        with
+        | ex ->
+            let exitCode, errMsg = ErrFailedToFetchPrData ex.Message
+            Console.Error.WriteLine errMsg
+            Environment.Exit exitCode
+            failwith <| "Unreachable because of: " + errMsg
+
+    let prJson = JsonValue.Parse response
+
+    let headRepoUrl =
+        try
+            prJson
+                .GetProperty("head")
+                .GetProperty("repo")
+                .GetProperty("ssh_url")
+                .AsString()
+        with
+        | ex ->
+            let exitCode, errMsg = ErrFailedToExtractHeadRepoUrl ex.Message
+            Console.Error.WriteLine errMsg
+            Environment.Exit exitCode
+            failwith <| "Unreachable because of: " + errMsg
+
+    let headBranch =
+        try
+            prJson
+                .GetProperty("head")
+                .GetProperty("ref")
+                .AsString()
+        with
+        | ex ->
+            let exitCode, errMsg = ErrFailedToExtractHeadBranch ex.Message
+            Console.Error.WriteLine errMsg
+            Environment.Exit exitCode
+            failwith <| "Unreachable because of: " + errMsg
+
+    Console.WriteLine $"PR #{prNumber} source repo: {headRepoUrl}"
+    Console.WriteLine $"PR #{prNumber} source branch: {headBranch}"
+    headRepoUrl, headBranch
 
 
 // Determine branch existence via ls-remote against a single remote target (name or URL)
@@ -191,13 +296,35 @@ let GetCurrentHeadBranch(repoDir: Option<string>) =
         .UnwrapDefault(throwWhenWarnings = false)
         .Trim()
 
+let rawArgs = Misc.FsxOnlyArguments()
+
+if rawArgs.Length < 1 || rawArgs.Length > 2 then
+    let exitCode, errMsg = errUsage
+    Console.Error.WriteLine errMsg
+    Environment.Exit exitCode
+
+// If single arg is a PR URL, resolve it to repo URL + branch before proceeding
+let resolvedArgs =
+    if IsGitHubPullRequestUrl rawArgs.[0] then
+        if rawArgs.Length = 2 then
+            let exitCode, _ = errUsage
+
+            Console.Error.WriteLine
+                "A PR URL already encodes the branch name. Do not specify a second argument."
+
+            Environment.Exit exitCode
+
+        let headRepoUrl, headBranch = ResolvePrUrl rawArgs.[0]
+        [ headRepoUrl; headBranch ]
+    else
+        rawArgs
+
 let (initialState, branchTargetInfo): (InitialState * BranchTargetInfo) =
-    let args = Misc.FsxOnlyArguments()
+    let args = resolvedArgs
 
     if args.Length < 1 || args.Length > 2 then
         let exitCode, errMsg = errUsage
         Console.Error.WriteLine errMsg
-
         Environment.Exit exitCode
 
     let firstArg = args.[0]
