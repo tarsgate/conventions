@@ -19,32 +19,83 @@ env:
   CHECKOUT_ACTION_VERSION: "4"
 
 jobs:
+  calc-docker-img-tag:
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.md5sum.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compute MD5 sum of Dockerfile
+        id: md5sum
+        run: |
+          echo "tag=$(md5sum Dockerfile | awk '{print $1}')" >> $GITHUB_OUTPUT
+
+  docker-img-build-push:
+    needs: calc-docker-img-tag
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check if image exists
+        id: check
+        run: |
+          TAG=${{ needs.calc-docker-img-tag.outputs.tag }}
+          IMAGE=ghcr.io/${{ github.repository_owner }}/conventions-ci:$TAG
+          if docker manifest inspect $IMAGE > /dev/null 2>&1; then
+            echo "image_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "image_exists=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Build and push image
+        if: steps.check.outputs.image_exists == 'false'
+        run: |
+          TAG=${{ needs.calc-docker-img-tag.outputs.tag }}
+          IMAGE=ghcr.io/${{ github.repository_owner }}/conventions-ci
+          docker build -t $IMAGE:$TAG .
+          docker push $IMAGE:$TAG
+      - name: Delete other GHCR package versions (keep current)
+        if: steps.check.outputs.image_exists == 'false'
+        env:
+          TAG: ${{ needs.calc-docker-img-tag.outputs.tag }}
+        run: |
+          PACKAGE=conventions-ci
+          OWNER=${{ github.repository_owner }}
+          AUTH_HEADER="Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}"
+
+          # Try org endpoint first, fall back to user endpoint
+          VERSIONS=$(curl --silent --header "$AUTH_HEADER" "https://api.github.com/orgs/${OWNER}/packages/container/${PACKAGE}/versions")
+          if echo "$VERSIONS" | jq -e 'type == "array"' > /dev/null 2>&1; then
+            API_BASE="https://api.github.com/orgs/${OWNER}/packages/container/${PACKAGE}/versions"
+          else
+            VERSIONS=$(curl --silent --header "$AUTH_HEADER" "https://api.github.com/users/${OWNER}/packages/container/${PACKAGE}/versions")
+            API_BASE="https://api.github.com/users/${OWNER}/packages/container/${PACKAGE}/versions"
+          fi
+
+          # Delete all versions that don't have the current tag
+          echo "$VERSIONS" | jq -r --arg TAG "$TAG" '.[] | select(.metadata.container.tags | index($TAG) | not) | .id' | while read -r VERSION_ID; do
+            echo "Deleting version $VERSION_ID"
+            curl --silent --request DELETE --header "$AUTH_HEADER" "${API_BASE}/${VERSION_ID}"
+          done
+
   build-fs:
     name: Build F#
+    needs: [calc-docker-img-tag, docker-img-build-push]
     runs-on: ubuntu-latest
     container:
-      image: "ubuntu:26.04"
+      image: ghcr.io/${{ github.repository_owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.tag }}
     steps:
       - name: Run actions/checkout
         uses: nblockchain/conventions@master
         with:
           uses: actions/checkout@v${{ env.CHECKOUT_ACTION_VERSION }}
-      - name: Install required dependencies
-        run: |
-          apt update
-          apt install --yes sudo
-          sudo apt install --yes --no-install-recommends git
-
-      - name: Setup .NET
-        run: |
-          # We need to install `ca-certificates`, otherwise we get these errors in the CI:
-          # Unable to load the service index for source https://api.nuget.org/v3/index.json.
-          # The SSL connection could not be established, see inner exception.
-          # The remote certificate is invalid because of errors in the certificate chain: UntrustedRoot
-          apt install --yes --no-install-recommends ca-certificates
-
-          apt install --yes --no-install-recommends dotnet-sdk-${{ env.DOTNET_VERSION }}
-
       - name: Compile the conventions solution
         run: dotnet build --configuration Release conventions.sln
       - name: Compile F# scripts
@@ -52,59 +103,36 @@ jobs:
 
   file-conventions-tests:
     name: Run FileConventions-lib unit tests
-    needs: build-fs
+    needs: [build-fs, calc-docker-img-tag]
     runs-on: ubuntu-latest
     container:
-      image: "ubuntu:26.04"
+      image: ghcr.io/${{ github.repository_owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.tag }}
     steps:
       - name: Run actions/checkout
         uses: nblockchain/conventions@master
         with:
           uses: actions/checkout@v${{ env.CHECKOUT_ACTION_VERSION }}
-      - name: Install required dependencies
-        run: |
-          apt update
-          apt install --yes sudo
-
-      - name: Setup .NET
-        run: |
-          # We need to install `ca-certificates`, otherwise we get these errors in the CI:
-          # Unable to load the service index for source https://api.nuget.org/v3/index.json.
-          # The SSL connection could not be established, see inner exception.
-          # The remote certificate is invalid because of errors in the certificate chain: UntrustedRoot
-          apt install --yes --no-install-recommends ca-certificates
-
-          apt install --yes --no-install-recommends dotnet-sdk-${{ env.DOTNET_VERSION }}
-
       - name: Run tests to validate F# scripts
         run: dotnet test src/FileConventions.Test/FileConventions.Test.fsproj
 
   build-ts:
     name: Build TypeScript
-
+    needs: [calc-docker-img-tag, docker-img-build-push]
     runs-on: ubuntu-latest
     container:
-      image: "ubuntu:26.04"
+      image: ghcr.io/${{ github.repository_owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.tag }}
     steps:
       - name: Run actions/checkout
         uses: nblockchain/conventions@master
         with:
           uses: actions/checkout@v${{ env.CHECKOUT_ACTION_VERSION }}
-      - name: Install required dependencies
-        run: |
-          apt update
-          apt install --yes sudo
-          sudo apt install --yes --no-install-recommends git ca-certificates
-
-          sudo apt install --yes --no-install-recommends npm curl
       - name: Print versions
         run: |
           git --version
           node --version
           npm --version
-      - name: Install yarn and yarn modules
+      - name: Install yarn modules
         run: |
-          npm install --verbose --global yarn
           yarn add --dev typescript@$TYPESCRIPT_VERSION eslint@$ESLINT_VERSION @eslint/js@$ESLINT_VERSION typescript-eslint@$TYPESCRIPT_ESLINT_VERSION
       - name: Install commitlint dependencies
         shell: bash
@@ -123,25 +151,17 @@ jobs:
 
   commitlint-plugins-tests:
     name: Run commitlint-related tests
-    needs: build-ts
+    needs: [build-ts, calc-docker-img-tag]
     runs-on: ubuntu-latest
     container:
-      image: "ubuntu:26.04"
+      image: ghcr.io/${{ github.repository_owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.tag }}
     steps:
       - name: Run actions/checkout
         uses: nblockchain/conventions@master
         with:
           uses: actions/checkout@v${{ env.CHECKOUT_ACTION_VERSION }}
-      - name: Install required dependencies
+      - name: Install yarn modules
         run: |
-          apt update
-          apt install --yes sudo
-          sudo apt install --yes --no-install-recommends git ca-certificates
-
-          sudo apt install --yes --no-install-recommends npm curl
-      - name: Install yarn and yarn modules
-        run: |
-          npm install --verbose --global yarn
           yarn add --dev typescript@$TYPESCRIPT_VERSION ts-node
       - name: Install commitlint dependencies
         run: |
@@ -169,21 +189,13 @@ jobs:
     needs:
       - file-conventions-tests
       - commitlint-plugins-tests
+      - calc-docker-img-tag
     runs-on: ubuntu-latest
     container:
-      image: "ubuntu:26.04"
+      image: ghcr.io/${{ github.repository_owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.tag }}
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - name: Install required dependencies
-        run: |
-          apt update && apt install --yes sudo
-
-          # otherwise it gives error "Error: Input 'submodules' not supported when falling back to download using the GitHub REST API. To create a local Git repository instead, add Git 2.18 or higher to the PATH."
-          sudo apt install --yes --no-install-recommends git
-
-          # otherwise it gives error "fatal: unable to access 'https://github.com/nblockchain/conventions/': server certificate verification failed. CAfile: none CRLfile: none"
-          sudo apt install --yes --no-install-recommends ca-certificates
       - name: Run actions/checkout
         uses: nblockchain/conventions@master
         with:
@@ -193,16 +205,6 @@ jobs:
               "submodules": "recursive",
               "fetch-depth": 0
             }
-      - name: Setup .NET
-        run: |
-          # We need to install `ca-certificates`, otherwise we get these errors in the CI:
-          # Unable to load the service index for source https://api.nuget.org/v3/index.json.
-          # The SSL connection could not be established, see inner exception.
-          # The remote certificate is invalid because of errors in the certificate chain: UntrustedRoot
-          apt install --yes --no-install-recommends ca-certificates
-
-          apt install --yes --no-install-recommends dotnet-sdk-${{ env.DOTNET_VERSION }}
-
       - name: Check all files end with EOL
         run: ./scripts/eofConvention.fsx
       - name: Check all .fsx scripts have (proper) shebang
@@ -243,25 +245,18 @@ jobs:
           dotnet tool install fantomless-tool --version 4.7.997-prerelease
           dotnet fantomless --recurse .
           git diff --exit-code || (echo "Formatting did not match (see above diff), please run fantomless-tool" >&2 && exit 1)
-
-      - name: Install commitlint&prettier's required dependencies
-        run: |
-          sudo apt install --yes --no-install-recommends npm
       - name: Print versions
         run: |
           git --version
           node --version
           npm --version
-
       - name: Run git+githubCI workaround
         run: |
           # We need this step so we can change the files using `npx prettier --write` in the next step.
           # Otherwise we get permission denied error in the CI.
           sudo chmod 777 --recursive .
-
       - name: Install prettier
         run: npm install --verbose
-
       - name: Run "prettier" to check the style of our TypeScript and YML code
         run: |
           sudo npm run format
@@ -272,7 +267,6 @@ jobs:
           # run the following command to ignore package.json file
           git restore package.json
           git diff --exit-code || (echo "Formatting did not match (see above diff), please run 'npm run format'" >&2 && exit 1)
-
       - name: Validate current commit (last commit) with commitlint
         if: github.event_name == 'push'
         run: ./commitlint.sh --last --verbose
@@ -282,7 +276,6 @@ jobs:
           ./commitlint.sh --verbose \
             --from ${{ github.event.pull_request.head.sha }}~${{ github.event.pull_request.commits }} \
             --to ${{ github.event.pull_request.head.sha }}
-
       - name: Check commits 1 by 1
         if: github.event_name == 'pull_request'
         run: ./scripts/checkCommits1by1.fsx
