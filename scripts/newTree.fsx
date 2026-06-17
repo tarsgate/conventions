@@ -113,22 +113,24 @@ let ErrDirectoryDoesNotExist path =
     (2, sprintf "Directory '%s' does not exist." path)
 
 let ErrDirectoryIsNotClone path =
-    (3, sprintf "Directory '%s' already exists and is not a clone." path)
+    (3, sprintf "Directory '%s' already exists but is not a clone." path)
 
 let errCannotDetermineRemoteName =
     (4,
      "Both 'upstream' and 'origin' remotes already exist and the new remote is not a fork. Cannot determine a name for the new remote.")
 
-let errCannotCheckGitHubFork =
+let errGitHubApiConnectionFailedCannotCheckIfGitHubRepoIsForkOrNot =
     (5,
-     "Could not check whether the repo is a GitHub fork. Cannot determine a name for the new remote.")
+     "Could not check whether the repo is a GitHub fork: check your internet connection?")
 
-let ErrFailedToAddRemote url =
-    (6, sprintf "Failed to add remote '%s'." url)
+let errPrAlreadyEncodesBranchName =
+    (6,
+     "A PR URL already encodes the branch name. Do not specify a second argument.")
 
-let errGitFetchAllFailed = (7, "Git fetch --all failed.")
+let errGitFetchAllFailed =
+    (7, "Git fetch --all failed: check your internet connection?")
 
-let errGitCloneFailed = (8, "Git clone failed.")
+let errGitCloneFailed = (8, "Git clone failed: check your internet connection?")
 
 let ErrNotGitHubCannotDetermineRemoteName dir =
     (9,
@@ -136,21 +138,13 @@ let ErrNotGitHubCannotDetermineRemoteName dir =
          "Directory '%s' already exists; URL is not GitHub so API cannot be queried to find best name for new remote"
          dir)
 
-let ErrFailedToRenameRemote newName =
-    (10, sprintf "Failed to rename remote 'origin' to '%s'." newName)
-
 let errInvalidPrUrl =
-    (11,
+    (10,
      "Invalid PR URL. Expected format: https://github.com/<owner>/<repo>/pull/<number>")
 
-let ErrFailedToFetchPrData exMsg =
-    (12, sprintf "Failed to fetch PR data from GitHub API: %s" exMsg)
-
-let ErrFailedToExtractHeadRepoUrl exMsg =
-    (13, sprintf "Failed to extract head repo URL from PR data: %s" exMsg)
-
-let ErrFailedToExtractHeadBranch exMsg =
-    (14, sprintf "Failed to extract head branch from PR data: %s" exMsg)
+let errFailedToFetchPrData =
+    (11,
+     "Failed to fetch PR data from GitHub API: check your internet connection?")
 
 type ArgType =
     | Url of fullUrl: string * owner: string * headBranch: string
@@ -280,8 +274,8 @@ let ResolvePrUrl(prUrl: string) : string * string =
         try
             httpClient.GetStringAsync(apiUrl).Result
         with
-        | ex ->
-            let exitCode, errMsg = ErrFailedToFetchPrData ex.Message
+        | _ ->
+            let exitCode, errMsg = errFailedToFetchPrData
             Console.Error.WriteLine errMsg
             Environment.Exit exitCode
             failwith <| "Unreachable because of: " + errMsg
@@ -289,31 +283,17 @@ let ResolvePrUrl(prUrl: string) : string * string =
     let prJson = JsonValue.Parse response
 
     let headRepoUrl =
-        try
-            prJson
-                .GetProperty("head")
-                .GetProperty("repo")
-                .GetProperty("ssh_url")
-                .AsString()
-        with
-        | ex ->
-            let exitCode, errMsg = ErrFailedToExtractHeadRepoUrl ex.Message
-            Console.Error.WriteLine errMsg
-            Environment.Exit exitCode
-            failwith <| "Unreachable because of: " + errMsg
+        prJson
+            .GetProperty("head")
+            .GetProperty("repo")
+            .GetProperty("ssh_url")
+            .AsString()
 
     let headBranch =
-        try
-            prJson
-                .GetProperty("head")
-                .GetProperty("ref")
-                .AsString()
-        with
-        | ex ->
-            let exitCode, errMsg = ErrFailedToExtractHeadBranch ex.Message
-            Console.Error.WriteLine errMsg
-            Environment.Exit exitCode
-            failwith <| "Unreachable because of: " + errMsg
+        prJson
+            .GetProperty("head")
+            .GetProperty("ref")
+            .AsString()
 
     Console.WriteLine $"PR #{prNumber} source repo: {headRepoUrl}"
     Console.WriteLine $"PR #{prNumber} source branch: {headBranch}"
@@ -400,11 +380,8 @@ if rawArgs.Length < 1 || rawArgs.Length > 2 then
 let resolvedArgs =
     if IsGitHubPullRequestUrl rawArgs.[0] then
         if rawArgs.Length = 2 then
-            let exitCode, _ = errUsage
-
-            Console.Error.WriteLine
-                "A PR URL already encodes the branch name. Do not specify a second argument."
-
+            let exitCode, errMsg = errPrAlreadyEncodesBranchName
+            Console.Error.WriteLine errMsg
             Environment.Exit exitCode
 
         let headRepoUrl, headBranch = ResolvePrUrl rawArgs.[0]
@@ -475,7 +452,9 @@ let (initialState, branchTargetInfo): (InitialState * BranchTargetInfo) =
                 initialDir.CombineDir(firstArg, checkExistence = false)
 
             if not cloneDir.Exists then
-                let exitCode, errMsg = ErrDirectoryDoesNotExist firstArg
+                let exitCode, errMsg =
+                    ErrDirectoryDoesNotExist cloneDir.FullPath
+
                 Console.Error.WriteLine errMsg
 
                 Environment.Exit exitCode
@@ -613,10 +592,13 @@ match initialState with
     match maybeFoundRemote with
     | Some _ -> ()
     | None ->
-        let isGitHubUrl =
-            fullUrl.Contains("github.com", StringComparison.OrdinalIgnoreCase)
-
         let newRemoteName =
+            let isGitHubUrl =
+                fullUrl.Contains(
+                    "github.com",
+                    StringComparison.OrdinalIgnoreCase
+                )
+
             if not isGitHubUrl then
                 let exitCode, errMsg =
                     ErrNotGitHubCannotDetermineRemoteName repoAndFolderName
@@ -624,46 +606,42 @@ match initialState with
                 Console.Error.WriteLine errMsg
                 Environment.Exit exitCode
                 failwith <| "Unreachable because of: " + errMsg
-            else
-                let remoteMap = AllRemotes cloneDir
 
-                match CheckIsGitHubFork owner repoAndFolderName with
-                | Some false ->
-                    if not(Map.containsKey "upstream" remoteMap) then
-                        "upstream"
-                    elif not(Map.containsKey "origin" remoteMap) then
-                        "origin"
-                    else
-                        let exitCode, errMsg = errCannotDetermineRemoteName
+            let remoteMap = AllRemotes cloneDir
 
-                        Console.Error.WriteLine errMsg
+            match CheckIsGitHubFork owner repoAndFolderName with
+            | Some false ->
+                if not(Map.containsKey "upstream" remoteMap) then
+                    "upstream"
+                elif not(Map.containsKey "origin" remoteMap) then
+                    "origin"
+                else
+                    let exitCode, errMsg = errCannotDetermineRemoteName
 
-                        Environment.Exit exitCode
-                        failwith <| "Unreachable because of: " + errMsg
-                | Some true -> sprintf "%sFork" owner
-                | None ->
-                    let exitCode, errMsg = errCannotCheckGitHubFork
                     Console.Error.WriteLine errMsg
 
                     Environment.Exit exitCode
                     failwith <| "Unreachable because of: " + errMsg
+            | Some true -> sprintf "%sFork" owner
+            | None ->
+                let exitCode, errMsg =
+                    errGitHubApiConnectionFailedCannotCheckIfGitHubRepoIsForkOrNot
 
-        try
-            Process
-                .ExecDefault(
-                    sprintf
-                        "git -C %s remote add %s %s"
-                        cloneDir.FullPath
-                        newRemoteName
-                        fullUrl
-                )
-                .UnwrapDefault(throwWhenWarnings = false)
-            |> ignore<string>
-        with
-        | _ ->
-            let exitCode, errMsg = ErrFailedToAddRemote fullUrl
-            Console.Error.WriteLine errMsg
-            Environment.Exit exitCode
+                Console.Error.WriteLine errMsg
+
+                Environment.Exit exitCode
+                failwith <| "Unreachable because of: " + errMsg
+
+        Process
+            .ExecDefault(
+                sprintf
+                    "git -C %s remote add %s %s"
+                    cloneDir.FullPath
+                    newRemoteName
+                    fullUrl
+            )
+            .UnwrapDefault(throwWhenWarnings = false)
+        |> ignore<string>
 | _ -> ()
 
 // Ensure the target branch (and head branch, in case we want to rebase) are
