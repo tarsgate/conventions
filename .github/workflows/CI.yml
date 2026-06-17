@@ -254,12 +254,12 @@ jobs:
         run: |
           # We need this step so we can change the files using `npx prettier --write` in the next step.
           # Otherwise we get permission denied error in the CI.
-          sudo chmod 777 --recursive .
+          chmod 777 --recursive .
       - name: Install prettier
         run: npm install --verbose
       - name: Run "prettier" to check the style of our TypeScript and YML code
         run: |
-          sudo npm run format
+          npm run format
           # Since we changed file modes in the previous step we need the following command to
           # make git ignore mode changes in files and doesn't include them in the git diff command.
           git config core.fileMode false
