@@ -33,7 +33,30 @@ let targetDir =
         |> fst
 
 let inconsistentVersionsInGitHubCI =
-    FileConventions.DetectInconsistentVersionsInGitHubCI targetDir
+    let repositoryRootDir = targetDir.Parent.Parent
+
+    let globalEnv =
+        let dotEnvFile =
+            Path.Join(repositoryRootDir.FullName, ".env") |> FileInfo
+
+        if dotEnvFile.Exists then
+            let lines = File.ReadAllLines dotEnvFile.FullName
+
+            lines
+            |> Seq.filter(fun line ->
+                not(
+                    System.String.IsNullOrWhiteSpace line || line.StartsWith '#'
+                )
+            )
+            |> Seq.map(fun line ->
+                let [| key; value |] = line.Split('=', count = 2)
+                key.Trim(), value.Trim()
+            )
+            |> Map.ofSeq
+        else
+            Map.empty
+
+    FileConventions.DetectInconsistentVersionsInGitHubCI targetDir globalEnv
 
 if inconsistentVersionsInGitHubCI then
     failwith

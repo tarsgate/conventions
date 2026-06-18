@@ -48,5 +48,6 @@
     <None Include="DummyFiles\DummyCIWithSameSetupPulumiVersion.yml" />
     <None Include="DummyFiles\DummyCIWithSetupPulumiVersionV2.0.0.yml" />
     <None Include="DummyFiles\DummyCIWithSetupPulumiVersionV2.0.1.yml" />
+    <None Include="DummyFiles\DummyCIWithSameSetupPulumiVersionInEnv.yml" />
   </ItemGroup>
 </Project>
