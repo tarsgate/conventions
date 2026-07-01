@@ -22,13 +22,17 @@ jobs:
   calc-docker-img-tag:
     runs-on: ubuntu-24.04
     outputs:
-      tag: ${{ steps.md5sum.outputs.tag }}
+      base: ${{ steps.md5sum.outputs.base }}
+      extras: ${{ steps.md5sum.outputs.extras }}
     steps:
       - uses: actions/checkout@v4
-      - name: Compute MD5 sum of Dockerfile
+      - name: Compute MD5 sums of Dockerfiles
         id: md5sum
         run: |
-          echo "tag=$(md5sum Dockerfile | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "base=$(md5sum Dockerfile.base | awk '{print $1}')" >> $GITHUB_OUTPUT
+          git apply Dockerfile.extras
+          echo "extras=$(md5sum Dockerfile.base | awk '{print $1}')" >> $GITHUB_OUTPUT
+          git clean -fdx
 
   docker-img-build-push:
     needs: calc-docker-img-tag
@@ -44,27 +48,46 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Check if image exists
-        id: check
+      - name: Check if image exists (base)
+        id: check_base
         run: |
-          TAG=${{ needs.calc-docker-img-tag.outputs.tag }}
+          TAG=${{ needs.calc-docker-img-tag.outputs.base }}
           IMAGE=ghcr.io/${{ github.repository_owner }}/conventions-ci:$TAG
           if docker manifest inspect $IMAGE > /dev/null 2>&1; then
             echo "image_exists=true" >> $GITHUB_OUTPUT
           else
             echo "image_exists=false" >> $GITHUB_OUTPUT
           fi
-      - name: Build and push image
-        if: steps.check.outputs.image_exists == 'false'
+      - name: Build and push image (base)
+        if: steps.check_base.outputs.image_exists == 'false'
         run: |
-          TAG=${{ needs.calc-docker-img-tag.outputs.tag }}
+          TAG=${{ needs.calc-docker-img-tag.outputs.base }}
           IMAGE=ghcr.io/${{ github.repository_owner }}/conventions-ci
-          docker build --tag $IMAGE:$TAG .
+          docker build --tag $IMAGE:$TAG --file Dockerfile.base .
+          docker push $IMAGE:$TAG
+      - name: Check if image exists (extras)
+        id: check_extras
+        run: |
+          TAG=${{ needs.calc-docker-img-tag.outputs.extras }}
+          IMAGE=ghcr.io/${{ github.repository_owner }}/conventions-ci:$TAG
+          if docker manifest inspect $IMAGE > /dev/null 2>&1; then
+            echo "image_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "image_exists=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Build and push image (extras)
+        if: steps.check_extras.outputs.image_exists == 'false'
+        run: |
+          TAG=${{ needs.calc-docker-img-tag.outputs.extras }}
+          IMAGE=ghcr.io/${{ github.repository_owner }}/conventions-ci
+          git apply Dockerfile.extras
+          docker build --tag $IMAGE:$TAG --file Dockerfile.base .
           docker push $IMAGE:$TAG
       - name: Delete other GHCR package versions (keep current)
         if: steps.check.outputs.image_exists == 'false'
         env:
-          TAG: ${{ needs.calc-docker-img-tag.outputs.tag }}
+          TAG_BASE: ${{ needs.calc-docker-img-tag.outputs.base }}
+          TAG_EXTRAS: ${{ needs.calc-docker-img-tag.outputs.extras }}
         run: |
           PACKAGE=conventions-ci
           OWNER=${{ github.repository_owner }}
@@ -79,8 +102,11 @@ jobs:
             API_BASE="https://api.github.com/users/${OWNER}/packages/container/${PACKAGE}/versions"
           fi
 
-          # Delete all versions that don't have the current tag
-          echo "$VERSIONS" | jq --raw-output --arg TAG "$TAG" '.[] | select(.metadata.container.tags | index($TAG) | not) | .id' | while read -r VERSION_ID; do
+          # Delete all versions that have neither the base nor the extras tag
+          echo "$VERSIONS" | jq --raw-output \
+            --arg TAG_BASE "$TAG_BASE" \
+            --arg TAG_EXTRAS "$TAG_EXTRAS" \
+            '.[] | select((.metadata.container.tags | index($TAG_BASE) | not) and (.metadata.container.tags | index($TAG_EXTRAS) | not)) | .id' | while read -r VERSION_ID; do
             echo "Deleting version $VERSION_ID"
             curl --silent --request DELETE --header "$AUTH_HEADER" "${API_BASE}/${VERSION_ID}"
           done
@@ -90,7 +116,7 @@ jobs:
     needs: [calc-docker-img-tag, docker-img-build-push]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/${{ github.repository_owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.tag }}
+      image: ghcr.io/${{ github.repository_owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.base }}
     steps:
       - name: Run actions/checkout
         uses: nblockchain/conventions@master
@@ -106,7 +132,7 @@ jobs:
     needs: [build-fs, calc-docker-img-tag]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/${{ github.repository_owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.tag }}
+      image: ghcr.io/${{ github.repository_owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.base }}
     steps:
       - name: Run actions/checkout
         uses: nblockchain/conventions@master
@@ -120,7 +146,7 @@ jobs:
     needs: [calc-docker-img-tag, docker-img-build-push]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/${{ github.repository_owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.tag }}
+      image: ghcr.io/${{ github.repository_owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.base }}
     steps:
       - name: Run actions/checkout
         uses: nblockchain/conventions@master
@@ -154,7 +180,7 @@ jobs:
     needs: [build-ts, calc-docker-img-tag]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/${{ github.repository_owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.tag }}
+      image: ghcr.io/${{ github.repository_owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.base }}
     steps:
       - name: Run actions/checkout
         uses: nblockchain/conventions@master
@@ -192,7 +218,7 @@ jobs:
       - calc-docker-img-tag
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/${{ github.repository_owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.tag }}
+      image: ghcr.io/${{ github.repository_owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.base }}
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
