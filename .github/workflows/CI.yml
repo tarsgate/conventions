@@ -28,7 +28,7 @@ jobs:
       - name: Compute MD5 sum of Dockerfile
         id: md5sum
         run: |
-          echo "tag=$(md5sum Dockerfile | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "tag=$(md5sum Dockerfile.base | awk '{print $1}')" >> $GITHUB_OUTPUT
 
   docker-img-build-push:
     needs: calc-docker-img-tag
@@ -59,7 +59,7 @@ jobs:
         run: |
           TAG=${{ needs.calc-docker-img-tag.outputs.tag }}
           IMAGE=ghcr.io/${{ github.repository_owner }}/conventions-ci
-          docker build --tag $IMAGE:$TAG .
+          docker build --tag $IMAGE:$TAG --file Dockerfile.base .
           docker push $IMAGE:$TAG
       - name: Delete other GHCR package versions (keep current)
         if: steps.check.outputs.image_exists == 'false'
