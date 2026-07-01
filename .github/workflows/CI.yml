@@ -59,7 +59,7 @@ jobs:
         run: |
           TAG=${{ needs.calc-docker-img-tag.outputs.tag }}
           IMAGE=ghcr.io/${{ github.repository_owner }}/conventions-ci
-          docker build --tag $IMAGE:$TAG .
+          docker build --tag $IMAGE:$TAG --file Dockerfile.base .
           docker push $IMAGE:$TAG
       - name: Delete other GHCR package versions (keep current)
         if: steps.check.outputs.image_exists == 'false'
