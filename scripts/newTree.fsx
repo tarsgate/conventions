@@ -697,29 +697,56 @@ allRemoteNames
             CheckRemoteBranchExists cloneDir branch remoteName
         )
 
-    let setBranchesCmd =
-        let subCommand = "remote set-branches"
-        match existingBranches with
-        | [] ->
-            sprintf
-                "git -C %s %s %s"
-                cloneDir.FullPath
-                subCommand
-                remoteName
-        | branches ->
-            let branchesArg = String.Join(" ", branches)
+    let hasFetchRefspec =
+        try
+            Process
+                .ExecDefault(
+                    sprintf
+                        "git -C %s config --get-all remote.%s.fetch"
+                        cloneDir.FullPath
+                        remoteName,
+                    echo = Echo.Off
+                )
+                .UnwrapDefault()
+            |> ignore
+            true
+        with
+        | _ -> false
 
-            sprintf
-                "git -C %s %s %s %s"
-                cloneDir.FullPath
-                subCommand
-                remoteName
-                branchesArg
+    let maybeSetBranchesCmd =
+        match existingBranches, hasFetchRefspec with
+        | [], false -> None
+        | [], true ->
+            Some(
+                sprintf
+                    "git -C %s remote set-branches %s"
+                    cloneDir.FullPath
+                    remoteName
+            )
+        | branches, false ->
+            Some(
+                sprintf
+                    "git -C %s remote set-branches --add %s %s"
+                    cloneDir.FullPath
+                    remoteName
+                    (String.Join(" ", branches))
+            )
+        | branches, true ->
+            Some(
+                sprintf
+                    "git -C %s remote set-branches %s %s"
+                    cloneDir.FullPath
+                    remoteName
+                    (String.Join(" ", branches))
+            )
 
-    Process
-        .ExecDefault(setBranchesCmd)
-        .UnwrapDefault(throwWhenWarnings = false)
-    |> ignore<string>
+    match maybeSetBranchesCmd with
+    | None -> ()
+    | Some setBranchesCmd ->
+        Process
+            .ExecDefault(setBranchesCmd)
+            .UnwrapDefault(throwWhenWarnings = false)
+        |> ignore<string>
 )
 
 // Fetch all remotes
