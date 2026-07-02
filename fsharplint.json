@@ -333,6 +333,35 @@
         }
     },
     "ensureTailCallDiagnosticsInRecursiveFunctions": { "enabled": true },
+    "favourAsKeyword": { "enabled": true },
+    "interpolatedStringWithNoSubstitution": { "enabled": true },
+    "indexerAccessorStyleConsistency": {
+        "enabled": true,
+        "config": {
+            "style": "OCaml"
+        }
+    },
+    "favourSingleton": { "enabled": true },
+    "noAsyncRunSynchronouslyInLibrary": { "enabled": true },
+    "favourNestedFunctions": { "enabled": true },
+    "disallowShadowing": { "enabled": false },
+    "discourageStringInterpolationWithStringFormat": {
+        "enabled": true
+    },
+    "favourNamedMembers": { "enabled": true },
+    "synchronousFunctionNames": { "enabled": true },
+    "asynchronousFunctionNames": {
+        "enabled": true,
+        "config": {
+            "mode": "OnlyPublicAPIsInLibraries"
+        }
+    },
+    "simpleAsyncComplementaryHelpers": {
+        "enabled": true,
+        "config": {
+            "mode": "OnlyPublicAPIsInLibraries"
+        }
+    },
     "hints": {
         "add": [
             "not (a =  b) ===> a <> b",
@@ -395,6 +424,7 @@
 
             "if a then true else false ===> a",
             "if a then false else true ===> not a",
+            "if x then y else y ===> y",
             "not (not x) ===> x",
 
             "(fst x, snd x) ===> x",
@@ -437,6 +467,7 @@
             "pattern: [x] ===> x::[]",
 
             "x @ [] ===> x",
+            "(List.singleton x) @ y ===> x :: y",
 
             "List.isEmpty [] ===> true",
             "Array.isEmpty [||] ===> true",
