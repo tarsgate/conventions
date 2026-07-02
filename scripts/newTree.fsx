@@ -372,6 +372,7 @@ let GetExistingWorktreeBranches(cloneDir: AbsDir) =
     |> Seq.filter(fun trimmed -> not(String.IsNullOrEmpty trimmed))
     |> Seq.choose(fun trimmed ->
         let branchPrefix = "branch refs/heads/"
+
         if trimmed.StartsWith branchPrefix then
             Some(trimmed.Substring branchPrefix.Length)
         else
@@ -698,7 +699,7 @@ allRemoteNames
         )
 
     let hasFetchRefspec =
-        try
+        match
             Process
                 .ExecDefault(
                     sprintf
@@ -707,11 +708,10 @@ allRemoteNames
                         remoteName,
                     echo = Echo.Off
                 )
-                .UnwrapDefault()
-            |> ignore
-            true
-        with
-        | _ -> false
+                .Result
+            with
+        | ProcessResultState.Error _ -> false
+        | _ -> true
 
     let maybeSetBranchesCmd =
         match existingBranches, hasFetchRefspec with
