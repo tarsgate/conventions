@@ -1,8 +1,8 @@
 diff --git a/Dockerfile.base b/Dockerfile.base
-index 099e36d..06400f5 100644
+index 099e36d..956a62d 100644
 --- a/Dockerfile.base
 +++ b/Dockerfile.base
-@@ -16,7 +16,132 @@ RUN apt --yes install --no-install-recommends dotnet-sdk-10.0
+@@ -16,7 +16,133 @@ RUN apt --yes install --no-install-recommends dotnet-sdk-10.0
  RUN apt --yes install --no-install-recommends npm
  RUN npm install --global yarn
  
@@ -13,6 +13,7 @@ index 099e36d..06400f5 100644
 +RUN apt --yes install --no-install-recommends postgresql
 +RUN apt --yes install --no-install-recommends nginx
 +RUN apt --yes install --no-install-recommends socat
++RUN apt --yes install --no-install-recommends supervisor
 +# for `killall` command
 +RUN apt --yes install --no-install-recommends psmisc
 +# for `make` command
