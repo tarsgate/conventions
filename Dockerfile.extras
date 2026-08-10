@@ -1,8 +1,8 @@
 diff --git a/Dockerfile.base b/Dockerfile.base
-index 099e36d..956a62d 100644
+index 099e36d..7dfb2f8 100644
 --- a/Dockerfile.base
 +++ b/Dockerfile.base
-@@ -16,7 +16,133 @@ RUN apt --yes install --no-install-recommends dotnet-sdk-10.0
+@@ -16,6 +16,133 @@ RUN apt --yes install --no-install-recommends dotnet-sdk-10.0
  RUN apt --yes install --no-install-recommends npm
  RUN npm install --global yarn
  
@@ -14,11 +14,12 @@ index 099e36d..956a62d 100644
 +RUN apt --yes install --no-install-recommends nginx
 +RUN apt --yes install --no-install-recommends socat
 +RUN apt --yes install --no-install-recommends supervisor
++RUN apt --yes install --no-install-recommends unzip
 +# for `killall` command
 +RUN apt --yes install --no-install-recommends psmisc
 +# for `make` command
 +RUN apt --yes install --no-install-recommends build-essential
-+# for network diagnostics
++# For network diagnostics. In case there are problems with network connectivity we want to diagnose.
 +RUN apt --yes install --no-install-recommends iputils-ping
 +RUN apt --yes install --no-install-recommends net-tools
 +
@@ -111,16 +112,23 @@ index 099e36d..956a62d 100644
 +RUN mv ./pulumi /usr/local/bin/pulumi
 +RUN chmod +x /usr/local/bin/pulumi
 +
++# Install Pulumi providers
++ADD scripts/installPulumiProvider.fsx /usr/local/bin/installPulumiProvider.fsx
++RUN installPulumiProvider.fsx bitlaunch 0.4.2
++RUN installPulumiProvider.fsx lnvps 0.0.47
++RUN installPulumiProvider.fsx namesilo 0.0.7
++RUN installPulumiProvider.fsx unhumandomains 0.0.8
++
 +# Install Xray (use script in latest commit in XTLS/Xray-install repo as of writing this script)
 +RUN wget https://raw.githubusercontent.com/XTLS/Xray-install/b7410c4e2fe2ed5c0ddca508eba2f4e42a91e1d2/install-release.sh
 +RUN wget https://github.com/XTLS/Xray-core/releases/download/v25.9.11/Xray-linux-64.zip
++RUN chmod +x ./install-release.sh
++# by creating dockerenv file, we prevent install-release.sh to try to detect systemd, which would end up failing, because systemd can't run inside docker/podman
++RUN touch /.dockerenv
 +# install-release.sh will prompt to press any key with local install, so use "yes" command to simulate key press
 +# temporarily disable pipefail because otherwise install-release.sh will fail the whole script because of these errors:
 +# rm: cannot remove '/etc/systemd/system/xray.service.d/10-donot_touch_multi_conf.conf': No such file or directory
 +# rm: cannot remove '/etc/systemd/system/xray@.service.d/10-donot_touch_multi_conf.conf': No such file or directory
-+RUN chmod +x ./install-release.sh
-+# install-release.sh will not fail trying to detect systemd if /.dockerenv file exists
-+RUN touch /.dockerenv
 +RUN yes | ./install-release.sh --local ./Xray-linux-64.zip
 +RUN rm ./install-release.sh
 +RUN rm ./Xray-linux-64.zip
@@ -128,11 +136,3 @@ index 099e36d..956a62d 100644
  # cleanup apt cache to reduce img size & avoid unneeded files in the final layer
  RUN rm -rf /var/lib/apt/lists/*
  
-+# Install Pulumi providers
-+ADD scripts/installPulumiProvider.fsx /installPulumiProvider.fsx
-+RUN /installPulumiProvider.fsx bitlaunch 0.4.2
-+RUN /installPulumiProvider.fsx lnvps 0.0.47
-+RUN /installPulumiProvider.fsx namesilo 0.0.7
-+RUN /installPulumiProvider.fsx unhumandomains 0.0.8
-+
- CMD ["bash"]

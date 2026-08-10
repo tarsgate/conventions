@@ -2,10 +2,19 @@
 
 #r "nuget: Fsdk, Version=0.9.99--date20260618-1029.git-79ec1be"
 
+open System
 open System.IO
 
 open Fsdk
 open Fsdk.Process
+
+let usage =
+    $"Usage: dotnet fsi {__SOURCE_FILE__} <provider name> <provider version>"
+
+let errorUsage = 1, usage
+
+let ErrorWget wgetExitCode =
+    2, $"wget command failed with exit code %i{wgetExitCode}"
 
 let InstallProvider (name: string) (version: string) =
     let providerName = $"pulumi-{name}"
@@ -18,8 +27,8 @@ let InstallProvider (name: string) (version: string) =
         Directory.CreateDirectory
         <| Path.Combine(providersDir.FullName, providerName)
 
-    let initialCurrentDirectory = System.Environment.CurrentDirectory
-    System.Environment.CurrentDirectory <- providerDir.FullName
+    let initialCurrentDirectory = Environment.CurrentDirectory
+    Environment.CurrentDirectory <- providerDir.FullName
 
     let wgetCommandResult =
         Process.Execute(
@@ -34,9 +43,10 @@ let InstallProvider (name: string) (version: string) =
     match wgetCommandResult.Result with
     | Success _
     | WarningsOrAmbiguous _ -> ()
-    | Error(exitCode, _) ->
-        printfn "wget command failed with exit code %i" exitCode
-        exit 3
+    | Error(wgetExitCode, _) ->
+        let exitCode, errMsg = ErrorWget wgetExitCode
+        printfn "%s" errMsg
+        exit exitCode
 
     let zipFileName = $"{providerName}.zip"
 
@@ -71,7 +81,8 @@ let InstallProvider (name: string) (version: string) =
             .Execute(
                 {
                     Command = "sudo"
-                    Arguments = "cp ./bin/pulumi-resource-bitlaunch /usr/bin"
+                    Arguments =
+                        $"cp {providerDir.FullName}/bin/pulumi-resource-bitlaunch /usr/bin"
                 },
                 Echo.All
             )
@@ -79,15 +90,13 @@ let InstallProvider (name: string) (version: string) =
         |> ignore<string>
     | _ -> ()
 
-    System.Environment.CurrentDirectory <- initialCurrentDirectory
+    Environment.CurrentDirectory <- initialCurrentDirectory
 
 let args = Misc.FsxOnlyArguments()
-
-let usage =
-    $"Usage: dotnet fsi {__SOURCE_FILE__} <provider name> <provider version>"
 
 match args with
 | [ providerName; version ] -> InstallProvider providerName version
 | _ ->
-    printfn "%s" usage
-    exit 1
+    let exitCode, errMsg = errorUsage
+    printfn "%s" errMsg
+    exit exitCode
