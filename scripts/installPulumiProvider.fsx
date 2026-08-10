@@ -58,18 +58,6 @@ let InstallProvider (name: string) (version: string) =
 
     providerZipFile.Delete()
 
-    // Avoid error: Access to the path '/home/runner/work/pulumi-deploy/pulumi-deploy/pulumi-bitlaunch/sdk/dotnet/obj/d3c3f3c5-9946-497b-8a7e-17f0b6501f6f.tmp' is denied. [/home/runner/work/pulumi-deploy/pulumi-deploy/GithubRunner/GithubRunner.fsproj]
-    Process
-        .Execute(
-            {
-                Command = "chmod"
-                Arguments = $"--recursive 0777 ./sdk/dotnet"
-            },
-            Echo.All
-        )
-        .UnwrapDefault()
-    |> ignore<string>
-
     match name with
     | "bitlaunch" ->
         Process
