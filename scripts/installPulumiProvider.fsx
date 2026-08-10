@@ -27,15 +27,15 @@ let InstallProvider (name: string) (version: string) =
         Directory.CreateDirectory
         <| Path.Combine(providersDir.FullName, providerName)
 
-    let initialCurrentDirectory = Environment.CurrentDirectory
-    Environment.CurrentDirectory <- providerDir.FullName
+    let providerZipFile =
+        FileInfo <| Path.Combine(providerDir.FullName, $"{providerName}.zip")
 
     let wgetCommandResult =
         Process.Execute(
             {
                 Command = "wget"
                 Arguments =
-                    $"https://github.com/nodeeffect/{providerName}/releases/download/{version}/{providerName}.zip"
+                    $"--output-document={providerZipFile.FullName} https://github.com/nodeeffect/{providerName}/releases/download/{version}/{providerName}.zip"
             },
             Echo.All
         )
@@ -48,20 +48,15 @@ let InstallProvider (name: string) (version: string) =
         printfn "%s" errMsg
         exit exitCode
 
-    let zipFileName = $"{providerName}.zip"
-
     Process
-        .Execute(
-            {
-                Command = "unzip"
-                Arguments = zipFileName
-            },
+        .ExecDefault(
+            "unzip {providerZipFile.FullName} -d {providerDir}",
             Echo.All
         )
         .UnwrapDefault()
     |> ignore<string>
 
-    File.Delete zipFileName
+    providerZipFile.Delete()
 
     // Avoid error: Access to the path '/home/runner/work/pulumi-deploy/pulumi-deploy/pulumi-bitlaunch/sdk/dotnet/obj/d3c3f3c5-9946-497b-8a7e-17f0b6501f6f.tmp' is denied. [/home/runner/work/pulumi-deploy/pulumi-deploy/GithubRunner/GithubRunner.fsproj]
     Process
@@ -89,8 +84,6 @@ let InstallProvider (name: string) (version: string) =
             .UnwrapDefault()
         |> ignore<string>
     | _ -> ()
-
-    Environment.CurrentDirectory <- initialCurrentDirectory
 
 let args = Misc.FsxOnlyArguments()
 
