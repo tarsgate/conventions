@@ -60,17 +60,12 @@ let InstallProvider (name: string) (version: string) =
 
     match name with
     | "bitlaunch" ->
-        Process
-            .Execute(
-                {
-                    Command = "sudo"
-                    Arguments =
-                        $"cp {providerDir.FullName}/bin/pulumi-resource-bitlaunch /usr/bin"
-                },
-                Echo.All
-            )
-            .UnwrapDefault()
-        |> ignore<string>
+        let bitlaunchBinaryName = "pulumi-resource-bitlaunch"
+
+        File.Copy(
+            Path.Join(providerDir.FullName, "bin", bitlaunchBinaryName),
+            Path.Join("/usr/bin", bitlaunchBinaryName)
+        )
     | _ -> ()
 
 let args = Misc.FsxOnlyArguments()
