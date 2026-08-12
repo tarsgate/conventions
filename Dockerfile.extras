@@ -1,8 +1,8 @@
 diff --git a/Dockerfile.base b/Dockerfile.base
-index 099e36d..7dfb2f8 100644
+index 099e36d..46fd400 100644
 --- a/Dockerfile.base
 +++ b/Dockerfile.base
-@@ -16,6 +16,133 @@ RUN apt --yes install --no-install-recommends dotnet-sdk-10.0
+@@ -16,6 +16,130 @@ RUN apt --yes install --no-install-recommends dotnet-sdk-10.0
  RUN apt --yes install --no-install-recommends npm
  RUN npm install --global yarn
  
@@ -126,9 +126,6 @@ index 099e36d..7dfb2f8 100644
 +# by creating dockerenv file, we prevent install-release.sh to try to detect systemd, which would end up failing, because systemd can't run inside docker/podman
 +RUN touch /.dockerenv
 +# install-release.sh will prompt to press any key with local install, so use "yes" command to simulate key press
-+# temporarily disable pipefail because otherwise install-release.sh will fail the whole script because of these errors:
-+# rm: cannot remove '/etc/systemd/system/xray.service.d/10-donot_touch_multi_conf.conf': No such file or directory
-+# rm: cannot remove '/etc/systemd/system/xray@.service.d/10-donot_touch_multi_conf.conf': No such file or directory
 +RUN yes | ./install-release.sh --local ./Xray-linux-64.zip
 +RUN rm ./install-release.sh
 +RUN rm ./Xray-linux-64.zip
