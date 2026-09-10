@@ -24,8 +24,8 @@ jobs:
           node-version: 22
 
       - name: Run Pi agent
-        # v2.27.1 => Pi v0.84.0 (Pi SDK v0.84.3)
-        uses: tarsgate/pi-coding-agent-action@c1e0b11c0b667f8e8fe9d0df8810c0745bfff59e
+        # v2.28.0 => Pi v0.85.1
+        uses: tarsgate/pi-coding-agent-action@create-pr-from-fork
         with:
           github_token: ${{ secrets.GH_REPO_BOT_ACCESS_TOKEN }}
           provider: ppq
