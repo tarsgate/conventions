@@ -76,6 +76,8 @@ type AbsDir(dirInfo: System.IO.DirectoryInfo, ?checkExistence: bool) =
         else
             path
 
+    member self.RawFullPath = dirInfo.FullName
+
     member self.Exists = dirInfo.Exists
 
     member self.Create() =
@@ -112,8 +114,11 @@ let errUsage =
 let ErrDirectoryDoesNotExist path =
     (2, sprintf "Directory '%s' does not exist." path)
 
-let ErrDirectoryIsNotClone path =
-    (3, sprintf "Directory '%s' already exists but is not a clone." path)
+let ErrDirectoryIsNeitherCloneNorWorktree path =
+    (3,
+     sprintf
+         "Directory '%s' already exists but is neither a clone nor a worktree."
+         path)
 
 let errCannotDetermineRemoteName =
     (4,
@@ -157,10 +162,20 @@ type InitialState =
         AlreadyCloned: bool
     }
 
+// Represents either a branch name or a commit hash.
+// A commit hash will be the case when the repository is in DETACHED HEAD state.
+type CommitHashOrBranchName =
+    | BranchName of name: string
+    | CommitHash of hash: string
+
+type RemoteBranchState =
+    | ExistsAlready
+    | CreateNewFromStartPoint of startPoint: CommitHashOrBranchName
+
 type BranchTargetInfo =
     {
         Name: string
-        ExistsAlready: bool
+        RemoteBranchState: RemoteBranchState
         SubFolderName: string
     }
 
@@ -358,16 +373,114 @@ let GetCurrentHeadBranch(cloneDir: AbsDir) =
         .UnwrapDefault(throwWhenWarnings = false)
         .Trim()
 
-let ValidateDirIsClone(cloneDir: AbsDir) =
+let TryFindParentCloneDir
+    (dir: AbsDir)
+    : Option<AbsDir * CommitHashOrBranchName> =
+    let gitCommonDirResult: Option<string> =
+        try
+            Some(
+                Process
+                    .ExecDefault(
+                        sprintf
+                            "git -C %s rev-parse --git-common-dir"
+                            dir.FullPath,
+                        echo = Echo.Off
+                    )
+                    .UnwrapDefault(throwWhenWarnings = false)
+                    .Trim()
+            )
+        with
+        | :? ProcessFailed -> None
+
+    match gitCommonDirResult with
+    | None -> None
+    | Some gitCommonDir ->
+        let gitCommonDirAbs =
+            if System.IO.Path.IsPathRooted gitCommonDir then
+                gitCommonDir
+            else
+                dir
+                    .CombineDir(
+                        gitCommonDir,
+                        checkExistence = false
+                    )
+                    .RawFullPath
+
+        let gitCommonDirAbsDir = AbsDir(gitCommonDirAbs, checkExistence = false)
+
+        if
+            String.Equals
+                (
+                    gitCommonDirAbsDir.PathlessName,
+                    bareRepoDirName,
+                    StringComparison.OrdinalIgnoreCase
+                )
+        then
+            let parentCloneDir =
+                AbsDir(
+                    System.IO.Path.GetDirectoryName gitCommonDirAbs,
+                    checkExistence = false
+                )
+
+            let branchOrCommit: Option<CommitHashOrBranchName> =
+                try
+                    Process
+                        .ExecDefault(
+                            sprintf
+                                "git -C %s symbolic-ref --short HEAD"
+                                dir.FullPath,
+                            echo = Echo.Off
+                        )
+                        .UnwrapDefault(throwWhenWarnings = false)
+                        .Trim()
+                    |> BranchName
+                    |> Some
+                with
+                | :? ProcessFailed ->
+                    try
+                        Process
+                            .ExecDefault(
+                                sprintf "git -C %s rev-parse HEAD" dir.FullPath,
+                                echo = Echo.Off
+                            )
+                            .UnwrapDefault(throwWhenWarnings = false)
+                            .Trim()
+                        |> CommitHash
+                        |> Some
+                    with
+                    | :? ProcessFailed -> None
+
+            match branchOrCommit with
+            | Some startPoint -> Some(parentCloneDir, startPoint)
+            | None -> None
+        else
+            None
+
+/// Validates that the directory is either a clone (has .git file and .bare
+/// dir) or a worktree (has a parent clone detected by
+/// TryFindParentCloneDir).  Returns None if it's a root clone, or
+/// Some(parentCloneDir, startPoint) if it's a worktree.
+/// Exits with error if it's neither.
+let ValidateDirIsCloneOrWorktree
+    (cloneDir: AbsDir)
+    : Option<AbsDir * CommitHashOrBranchName> =
     let gitFile =
         cloneDir.CombineFile(gitPointerFileName, checkExistence = false)
 
     let bareDir = cloneDir.CombineDir(bareRepoDirName, checkExistence = false)
 
-    if not gitFile.Exists || not bareDir.Exists then
-        let exitCode, errMsg = ErrDirectoryIsNotClone cloneDir.PathlessName
-        Console.Error.WriteLine errMsg
-        Environment.Exit exitCode
+    if gitFile.Exists && bareDir.Exists then
+        None
+    else
+        match TryFindParentCloneDir cloneDir with
+        | Some result -> Some result
+        | None ->
+            let exitCode, errMsg =
+                ErrDirectoryIsNeitherCloneNorWorktree cloneDir.PathlessName
+
+            Console.Error.WriteLine errMsg
+            Environment.Exit exitCode
+            failwith <| "Unreachable because of: " + errMsg
 
 let rawArgs = Misc.FsxOnlyArguments()
 
@@ -407,7 +520,7 @@ let (initialState, branchTargetInfo): (InitialState * BranchTargetInfo) =
 
     let firstArgIsUrl = IsUrl firstArg
 
-    let alreadyCloned, argType, repoAndFolderName, defaultBranchName =
+    let alreadyCloned, argType, repoAndFolderName, defaultBranchName, startPoint =
         if firstArgIsUrl then
             let owner, repoAndFolderName =
                 ExtractGhOwnerAndRepoNameFromUrl firstArg
@@ -418,7 +531,8 @@ let (initialState, branchTargetInfo): (InitialState * BranchTargetInfo) =
             let existing = cloneDir.Exists
 
             if existing then
-                ValidateDirIsClone cloneDir
+                ValidateDirIsCloneOrWorktree cloneDir
+                |> ignore<Option<AbsDir * CommitHashOrBranchName>>
 
             if not existing then
                 cloneDir.Create()
@@ -446,10 +560,12 @@ let (initialState, branchTargetInfo): (InitialState * BranchTargetInfo) =
             existing,
             Url(firstArg, owner, headBranch),
             repoAndFolderName,
-            headBranch
+            headBranch,
+            None
         else
-            let cloneDir =
-                initialDir.CombineDir(firstArg, checkExistence = false)
+            let dirPath = System.IO.Path.GetFullPath(firstArg)
+
+            let cloneDir = AbsDir(dirPath)
 
             if not cloneDir.Exists then
                 let exitCode, errMsg =
@@ -459,9 +575,20 @@ let (initialState, branchTargetInfo): (InitialState * BranchTargetInfo) =
 
                 Environment.Exit exitCode
 
-            ValidateDirIsClone cloneDir
+            match ValidateDirIsCloneOrWorktree cloneDir with
+            | None ->
+                true, FolderName, dirPath, GetCurrentHeadBranch cloneDir, None
+            | Some(parentCloneDir, startPoint) ->
+                let startPointString =
+                    match startPoint with
+                    | BranchName name -> name
+                    | CommitHash hash -> hash
 
-            true, FolderName, firstArg, GetCurrentHeadBranch cloneDir
+                true,
+                FolderName,
+                parentCloneDir.RawFullPath,
+                startPointString,
+                Some(startPoint)
 
     let branchName =
         match maybeBranchName with
@@ -480,7 +607,7 @@ let (initialState, branchTargetInfo): (InitialState * BranchTargetInfo) =
 
     let cloneDir = initialDir.CombineDir(repoAndFolderName)
 
-    let branchExists =
+    let remoteBranchExists =
         let existsOnConfiguredRemotes() =
             AllRemotes cloneDir
             |> Map.toSeq
@@ -507,11 +634,20 @@ let (initialState, branchTargetInfo): (InitialState * BranchTargetInfo) =
               AlreadyCloned = false
           } -> false
 
+    let remoteBranchState =
+        match startPoint with
+        | Some sp -> CreateNewFromStartPoint sp
+        | None ->
+            if remoteBranchExists then
+                ExistsAlready
+            else
+                CreateNewFromStartPoint(BranchName defaultBranchName)
+
     let branchTargetInfo =
         {
             Name = branchName
             SubFolderName = branchFolderName
-            ExistsAlready = branchExists
+            RemoteBranchState = remoteBranchState
         }
 
     initialState, branchTargetInfo
@@ -646,7 +782,7 @@ match initialState with
 
 // Ensure the target branch (and head branch, in case we want to rebase) are
 // included in fetch refspec if it exists on remote
-if branchTargetInfo.ExistsAlready then
+if branchTargetInfo.RemoteBranchState = ExistsAlready then
     let branchesToFetch =
         let headBranch =
             match initialState with
@@ -689,7 +825,19 @@ let absWorktreeDir =
     cloneDir.CombineDir(branchTargetInfo.SubFolderName, checkExistence = false)
 
 let gitWorktreeAddArgs =
-    if branchTargetInfo.ExistsAlready then
+    match branchTargetInfo.RemoteBranchState with
+    | CreateNewFromStartPoint startPoint ->
+        let startPointString =
+            match startPoint with
+            | BranchName name -> name
+            | CommitHash hash -> hash
+
+        sprintf
+            "-b %s %s %s"
+            branchTargetInfo.Name
+            absWorktreeDir.FullPath
+            startPointString
+    | ExistsAlready ->
         // Use remote tracking ref to avoid ambiguity when multiple remotes have the same branch
         let allRemoteNames =
             AllRemotes cloneDir |> Map.toSeq |> Seq.map fst |> Seq.toList
@@ -763,8 +911,6 @@ let gitWorktreeAddArgs =
                 remote
                 branchTargetInfo.Name
         | None -> sprintf "%s %s" absWorktreeDir.FullPath branchTargetInfo.Name
-    else
-        sprintf "-b %s %s" branchTargetInfo.Name absWorktreeDir.FullPath
 
 Process
     .ExecDefault(
@@ -776,7 +922,8 @@ Process
 // If branch already existed, worktree was created from a remote tracking ref
 // and is in detached HEAD state; create or reset the local branch to HEAD
 // (which is the latest remote tracking ref), then switch to it
-if branchTargetInfo.ExistsAlready then
+match branchTargetInfo.RemoteBranchState with
+| ExistsAlready ->
     let worktreeDir = cloneDir.CombineDir(branchTargetInfo.SubFolderName)
 
     let fullCmd =
@@ -797,10 +944,17 @@ if branchTargetInfo.ExistsAlready then
             branchTargetInfo.Name
             initialState.RepoAndFolderName
     )
-else
+| CreateNewFromStartPoint startPoint ->
+    let startPointString, sourceLabel =
+        match startPoint with
+        | BranchName name -> name, "branch"
+        | CommitHash hash -> hash, "commit"
+
     Console.WriteLine(
         sprintf
-            "Successfully created worktree '%s' from base branch of repo '%s'"
+            "Successfully created worktree '%s' from %s '%s' of repo '%s'"
             branchTargetInfo.SubFolderName
+            sourceLabel
+            startPointString
             initialState.RepoAndFolderName
     )
