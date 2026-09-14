@@ -1,5 +1,5 @@
 diff --git a/Dockerfile.base b/Dockerfile.base
-index 099e36d..e9efe9a 100644
+index 099e36d..3cd56af 100644
 --- a/Dockerfile.base
 +++ b/Dockerfile.base
 @@ -16,6 +16,128 @@ RUN apt --yes install --no-install-recommends dotnet-sdk-10.0
@@ -119,7 +119,7 @@ index 099e36d..e9efe9a 100644
 +
 +# Install Xray (use script in latest commit in XTLS/Xray-install repo as of writing this script)
 +RUN wget https://raw.githubusercontent.com/XTLS/Xray-install/b7410c4e2fe2ed5c0ddca508eba2f4e42a91e1d2/install-release.sh
-+RUN wget https://github.com/XTLS/Xray-core/releases/download/v25.9.11/Xray-linux-64.zip
++RUN wget https://github.com/XTLS/Xray-core/releases/download/v26.3.27/Xray-linux-64.zip
 +RUN chmod +x ./install-release.sh
 +# by creating dockerenv file, we prevent install-release.sh to try to detect systemd, which would end up failing, because systemd can't run inside docker/podman
 +RUN touch /.dockerenv
