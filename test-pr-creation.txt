@@ -1,0 +1,5 @@
+This is a sample file created to test the PR creation functionality.
+It contains some dummy text.
+1. Item one
+2. Item two
+3. Item three
