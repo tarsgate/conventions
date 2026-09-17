@@ -24,7 +24,7 @@ jobs:
           node-version: 22
 
       - name: Run Pi agent
-        uses: tarsgate/pi-coding-agent-action@v2.28.1
+        uses: shaftoe/pi-coding-agent-action@v2.28.1
         with:
           github_token: ${{ secrets.GH_REPO_BOT_ACCESS_TOKEN }}
           provider: ppq
