@@ -24,12 +24,11 @@ jobs:
           node-version: 22
 
       - name: Run Pi agent
-        # based on 1f0be2391705316c12e0f504eab2e39c74ec2da8 = v2.28.0 ( which depends on Pi v0.85.1 )
-        uses: tarsgate/pi-coding-agent-action@create-pr-from-fork-new
+        uses: tarsgate/pi-coding-agent-action@v2.28.1
         with:
           github_token: ${{ secrets.GH_REPO_BOT_ACCESS_TOKEN }}
           provider: ppq
-          model: auto
+          model: gemini-3-flash-preview
           token: ${{ secrets.PPQ_API_KEY }}
           extensions: |
             npm:awto-pi-lot
