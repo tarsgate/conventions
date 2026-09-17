@@ -28,7 +28,7 @@ jobs:
         with:
           github_token: ${{ secrets.GH_REPO_BOT_ACCESS_TOKEN }}
           provider: ppq
-          model: gemini-3-flash-preview
+          model: google/gemini-3-flash-preview
           token: ${{ secrets.PPQ_API_KEY }}
           extensions: |
             npm:awto-pi-lot
