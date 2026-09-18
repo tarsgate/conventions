@@ -24,7 +24,7 @@ jobs:
           node-version: 22
 
       - uses: actions/checkout@v4
-        
+
       - name: Run Pi agent
         uses: shaftoe/pi-coding-agent-action@v2.28.1
         with:
