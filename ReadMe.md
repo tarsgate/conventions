@@ -33,3 +33,4 @@ More things to come:
 - GitHub comment auto-responder? E.g. to answer to comments that end with "not working" or "doesn't work" or "does not work", asking for more details.
 - wrapLatestCommitMsg.fsx script to fail for obvious requirements that can't be automated (e.g. title max length)
 // PR Test
+// Another test
