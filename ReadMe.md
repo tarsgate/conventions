@@ -1,3 +1,5 @@
+# Conventions
+
 This is a repository that contains several useful things that other [tarsgate](https://github.com/tarsgate/) and `nblockchain` repos use, such as:
 
 - [Config file](commitlint.config.ts) and [plugins](commitlint/plugins.ts) for commitlint.
