@@ -1802,11 +1802,6 @@ let rec CheckCiStatus
                 |> Seq.sortByDescending(fun run -> run.CreatedAt)
                 |> Seq.tryHead
 
-            let status, conclusion =
-                match latestRun with
-                | Some run -> run.Status, run.Conclusion
-                | None -> failwith "No push workflow run found"
-
             // see https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/about-status-checks#check-statuses-and-conclusions
             let incompleteRunStatuses =
                 [
@@ -1818,7 +1813,14 @@ let rec CheckCiStatus
                     "pending"
                 ]
 
-            if List.contains status incompleteRunStatuses then
+            let incompleteInformation, hasFailure =
+                match latestRun with
+                | Some run ->
+                    List.contains run.Status incompleteRunStatuses,
+                    run.Status = "completed" && run.Conclusion = "failure"
+                | None -> true, false
+
+            if incompleteInformation then
                 if timeRemaining < timeBetweenCiStatusCheckRetries then
                     return ()
                 else
@@ -1829,7 +1831,7 @@ let rec CheckCiStatus
                             commitHash
                             commitMessage
                             (timeRemaining - timeBetweenCiStatusCheckRetries)
-            elif status = "completed" && conclusion = "failure" then
+            elif hasFailure then
                 Console.WriteLine()
 
                 Console.Error.WriteLine
