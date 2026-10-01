@@ -29,8 +29,8 @@ jobs:
           persist-credentials: false
 
       - name: Run Pi agent
-        # based on 1f0be2391705316c12e0f504eab2e39c74ec2da8 = v2.28.0 ( which depends on Pi v0.85.1 )
-        uses: tarsgate/pi-coding-agent-action@create-pr-from-fork-new
+        # based on 3080387559da9f13ef1ebb6a6307b2d0b97a5885 = v2.29.1+ ( which depends on Pi v0.99.2 )
+        uses: tarsgate/pi-coding-agent-action@develop
         with:
           github_token: ${{ secrets.GH_REPO_BOT_ACCESS_TOKEN }}
           provider: ppq
