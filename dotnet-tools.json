@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "dotnet-fsharplint": {
+      "version": "0.27.1--date20260709-0311.git-bd94a09",
+      "commands": [
+        "dotnet-fsharplint"
+      ],
+      "rollForward": false
+    }
+  }
+}
