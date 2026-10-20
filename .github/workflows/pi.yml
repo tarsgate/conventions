@@ -39,9 +39,9 @@ jobs:
 
         with:
           github_token: ${{ secrets.GH_REPO_BOT_ACCESS_TOKEN }}
-          provider: ppq
-          model: auto
-          token: ${{ secrets.PPQ_API_KEY }}
+          provider: nanogpt
+          model: auto-model
+          token: ${{ secrets.NANOGPT_API_KEY }}
           branch_name_template: "wip/pi/issue{number}-{title}-{timestamp}"
           export_session_html: true
           export_session_jsonl: true
