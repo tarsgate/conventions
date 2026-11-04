@@ -12,6 +12,16 @@
 
 * All information that is present in PR description should be in the commit messages as well, because this way it will be preserved in case of changing git hosting provider.
 
+* Before PR is ready to be merged, it needs to be tested, otherwise marked as DRAFT.
+
+* Before removing DRAFT status, the PR should be squashed, which means:
+    * WIP commits removed.
+    * TMP commits reverted (via `git revert`, not making them disappear).
+    * Commits that increase the quality of previous commits of the same PR need to be squashed with the commits that introduced the new code (e.g. refactoring commits that improve method names; or commits that make CI style jobs pass, in order to avoid intermediary commits with broken CI; etc).
+    * Here "increasing the quality" means better programming practices, better readability, better maintainability, etc. It **does not mean** fixing bugs. If a commit fixes a problem that happens at runtime which is worth noting about in a commit message, it is very likely that the commit needs to live on its own to be able to document in a commit message about the problem that was faced.
+    * Commits that change behaviour **should not** be squashed. Therefore squashing rarely means "squashing into one", because there are almost always exceptions.
+    * Commit messages are reviewed **again** to ensure that they have the **why**, not just the **what** (and optionally the **how**, in case it's not obvious).
+
 * If you want to contribute a script, do not use PowerShell or Bash, but an F# script. The reason to not use PowerShell is a personal preference from the maintainer of this project (and his suspicion that it might not be 100% guaranteed to be crossplatform); and the reason not to use Bash is because it's only Unix compatible (we cannot assume WSL is installed in Windows), and in general because it's too undeterministic and old, more info here: https://news.ycombinator.com/item?id=33116310
 
 * Our naming conventions are as follows:
