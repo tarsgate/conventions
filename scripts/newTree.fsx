@@ -681,7 +681,7 @@ if branchTargetInfo.ExistsAlready then
 
 // Fetch all remotes
 Process
-    .ExecDefault(sprintf "git -C %s fetch --all" cloneDir.FullPath)
+    .ExecDefault(sprintf "git -C %s fetch --all --prune" cloneDir.FullPath)
     .UnwrapDefault(throwWhenWarnings = false)
 |> ignore<string>
 
