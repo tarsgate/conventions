@@ -116,10 +116,10 @@ test("body-prose10", () => {
 
 test("body-prose11", () => {
     const commitMsgWithLargeBody =
-        "Backend/Ether: catch/retry new -32002 err code\n\n" +
+        "Backend/Foooo: catch/retry new -32002 err code\n\n" +
         "CI on master branch caught this[1]:\n\n" +
         "```\nUnhandled Exception\n```\n\n" +
-        "[1] https://github.com/nblockchain/geewallet/actions/runs/3507005645/jobs/5874411684";
+        "[1] https://github.com/baaaaaaaaar/baaaaaaaz/actions/runs/3507005645/jobs/5874411684";
 
     const bodyProse11 = runCommitLintOnMsg(commitMsgWithLargeBody);
     expect(bodyProse11.status).toBe(0);
@@ -188,13 +188,12 @@ Blah blah.`;
 });
 
 test("body-prose16", () => {
-    const commitMsgWithUrlAtTheEndOfParagraph = `Frontend.XF.Android: switch to SDK-style
+    const commitMsgWithUrlAtTheEndOfParagraph = `Foo: this is only a title
 
-Strangely enough when opening the new gwallet.android.sln in
-VS4Mac, it asks the user to install the wasm-tools-net6.0
-workload, even though CI works without it.
+This is a normal paragraph inside the body of the commit msg
+that respects all rules normally.
 
-Original PR: https://github.com/nblockchain/geewallet/pull/190`;
+Original PR: https://github.com/baaaaaaaaar/baaaaaaaz/pull/190`;
 
     const bodyProse16 = runCommitLintOnMsg(commitMsgWithUrlAtTheEndOfParagraph);
     expect(bodyProse16.status).toBe(0);
@@ -359,7 +358,7 @@ A very long line. A very long line. A very long line. A very long line. A very l
 });
 
 test("body-max-line-length9", () => {
-    // see https://github.com/nblockchain/conventions/issues/124
+    // see https://github.com/tarsgate/conventions/issues/124
     const commitMsgWithLargeBody = `GrpcService: fix some logging nits
 
 These mistakes were made in 45faeca2f0e7c9c5545f54fb3fcc815f52b8a7cf.`;
@@ -369,7 +368,7 @@ These mistakes were made in 45faeca2f0e7c9c5545f54fb3fcc815f52b8a7cf.`;
 });
 
 test("body-max-line-length10", () => {
-    // see https://github.com/nblockchain/conventions/issues/124
+    // see https://github.com/tarsgate/conventions/issues/124
     const commitMsgWithLargeBody = `GrpcService: fix some logging nits
 
 These mistakes were made in this GrpcService's RunIntoMeService commit: 45faeca2f0e7c9c5545f54fb3fcc815f52b8a7cf.`;
@@ -392,7 +391,7 @@ test("body-max-line-length11", () => {
         "scripts/make.fsx: allow running with newer .NET\n\n" +
         "So that envs that only have newer .NET version don't fail with:\n\n" +
         "```\nYou must install or update .NET to run this application.\n\n" +
-        "App: /__w/foo/foo/src/Foo.Frontend.Console/bin/Debug/net8.0/Foo.Frontend.Console.dll\n" +
+        "App: /__w/foo/bar/src/Baaaaaaaaaaaaaaaaaaz/bin/Debug/net8.0/Baaaaaaaaaaaaaaaaaaz.dll\n" +
         "```\n\nA" +
         seventyChars +
         ".";
@@ -629,7 +628,7 @@ test("body-paragraph-line-min-length12", () => {
         "scripts/make.fsx: allow running with newer .NET\n\n" +
         "So that envs that only have newer .NET version don't fail with:\n\n" +
         "```\nYou must install or update .NET to run this application.\n\n" +
-        "App: /__w/foo/foo/src/Foo.Frontend.Console/bin/Debug/net8.0/Foo.Frontend.Console.dll\n" +
+        "App: /__w/foo/bar/src/Baaaaaaaaaaaaaaaaaaz/bin/Debug/net8.0/Baaaaaaaaaaaaaaaaaaz.dll\n" +
         "```";
 
     const bodyParagraphLineMinLength12 = runCommitLintOnMsg(
@@ -796,12 +795,12 @@ Bla bla blah[1], and after that [2], then [3].
 
 test("footer-refs-validity4", () => {
     const commmitMsgWithFooter =
-        "Backend/Ether: catch/retry new -32002 err code\n\n" +
+        "Backend/Foooo: catch/retry new -32002 err code\n\n" +
         "CI on master branch caught this[1]:\n" +
         "```\nUnhandled Exception:\n" +
         "--- Something between dashes ---\n```\n" +
         "The end of the paragraph.\n\n" +
-        "[1] https://github.com/nblockchain/geewallet/actions/runs/3507005645/jobs/5874411684";
+        "[1] https://github.com/baaaaaaaaar/baaaaaaaz/actions/runs/3507005645/jobs/5874411684";
 
     const footerRefsValidity4 = runCommitLintOnMsg(commmitMsgWithFooter);
     expect(footerRefsValidity4.status).toBe(0);
@@ -838,7 +837,7 @@ Blah blah blah[1].
     expect(footerRefsValidity6.status).toBe(0);
 });
 
-// This test reflects this issue: https://github.com/nblockchain/conventions/issues/125
+// This test reflects this issue: https://github.com/tarsgate/conventions/issues/125
 test("footer-refs-validity7", () => {
     const commitMsgWithWithoutFooter = "foo: blah blah" + "\n\n" + "```[1]```";
 
@@ -846,7 +845,7 @@ test("footer-refs-validity7", () => {
     expect(footerRefsValidity7.status).toBe(0);
 });
 
-// This test reflects this issue: https://github.com/nblockchain/conventions/issues/146
+// This test reflects this issue: https://github.com/tarsgate/conventions/issues/146
 test("footer-refs-validity8", () => {
     const commitMsgWithCodeBlockAtFooterRef =
         "foo: blah blah" +
@@ -863,7 +862,7 @@ test("footer-refs-validity8", () => {
     expect(footerRefsValidity8.status).toBe(0);
 });
 
-// This test reflects this issue: https://github.com/nblockchain/conventions/issues/148
+// This test reflects this issue: https://github.com/tarsgate/conventions/issues/148
 test("footer-refs-validity9", () => {
     const commitMsgWithTwoCodeBlocksAtBodyWithRef =
         "foo: blah blah" +
