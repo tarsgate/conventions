@@ -146,6 +146,10 @@ let errFailedToFetchPrData =
     (11,
      "Failed to fetch PR data from GitHub API: check your internet connection?")
 
+let errPrNotFoundOrUnauthorized =
+    (12,
+     "Failed to fetch PR data from GitHub API: unauthorized or PR not found (is the repository private?)")
+
 type ArgType =
     | Url of fullUrl: string * owner: string * headBranch: string
     | FolderName
@@ -256,6 +260,33 @@ let CheckIsGitHubFork (owner: string) (repo: string) : Option<bool> =
     with
     | _ -> None
 
+let IsUnauthorizedOrNotFound(ex: Exception) : bool =
+    let queue = Collections.Generic.Queue<Exception>()
+    queue.Enqueue ex
+
+    let mutable found = false
+
+    while not found && queue.Count > 0 do
+        let current = queue.Dequeue()
+
+        if not(isNull current) then
+            match current with
+            | :? HttpRequestException as httpEx when httpEx.StatusCode.HasValue ->
+                let code = httpEx.StatusCode.Value
+
+                if code = Net.HttpStatusCode.NotFound
+                   || code = Net.HttpStatusCode.Unauthorized
+                   || code = Net.HttpStatusCode.Forbidden then
+                    found <- true
+            | :? AggregateException as aggEx ->
+                for inner in aggEx.InnerExceptions do
+                    queue.Enqueue inner
+            | _ ->
+                if not(isNull current.InnerException) then
+                    queue.Enqueue current.InnerException
+
+    found
+
 let ResolvePrUrl(prUrl: string) : string * string =
     let owner, repo, prNumber =
         match TryParseGitHubPullRequestUrl prUrl with
@@ -274,8 +305,13 @@ let ResolvePrUrl(prUrl: string) : string * string =
         try
             httpClient.GetStringAsync(apiUrl).Result
         with
-        | _ ->
-            let exitCode, errMsg = errFailedToFetchPrData
+        | ex ->
+            let exitCode, errMsg =
+                if IsUnauthorizedOrNotFound ex then
+                    errPrNotFoundOrUnauthorized
+                else
+                    errFailedToFetchPrData
+
             Console.Error.WriteLine errMsg
             Environment.Exit exitCode
             failwith <| "Unreachable because of: " + errMsg
