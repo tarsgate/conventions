@@ -19,6 +19,19 @@ env:
   CHECKOUT_ACTION_VERSION: "4"
 
 jobs:
+  docker-img-info:
+    runs-on: ubuntu-24.04
+    outputs:
+      owner: ${{ steps.owner.outputs.owner }}
+    steps:
+      - name: Determine upstream repository owner
+        id: owner
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          UPSTREAM_OWNER=$(gh repo view ${{ github.repository }} --json parent --jq '.parent.owner.login // empty')
+          echo "owner=${UPSTREAM_OWNER:-${{ github.repository_owner }}}" >> $GITHUB_OUTPUT
+
   calc-docker-img-tag:
     runs-on: ubuntu-24.04
     outputs:
@@ -35,7 +48,7 @@ jobs:
           git clean -fdx
 
   docker-img-build-push:
-    needs: calc-docker-img-tag
+    needs: [docker-img-info, calc-docker-img-tag]
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -52,7 +65,7 @@ jobs:
         id: check_base
         run: |
           TAG=${{ needs.calc-docker-img-tag.outputs.base }}
-          IMAGE=ghcr.io/${{ github.repository_owner }}/conventions-ci:$TAG
+          IMAGE=ghcr.io/${{ needs.docker-img-info.outputs.owner }}/conventions-ci:$TAG
           if docker manifest inspect $IMAGE > /dev/null 2>&1; then
             echo "image_exists=true" >> $GITHUB_OUTPUT
           else
@@ -69,7 +82,7 @@ jobs:
         id: check_extras
         run: |
           TAG=${{ needs.calc-docker-img-tag.outputs.extras }}
-          IMAGE=ghcr.io/${{ github.repository_owner }}/conventions-ci:$TAG
+          IMAGE=ghcr.io/${{ needs.docker-img-info.outputs.owner }}/conventions-ci:$TAG
           if docker manifest inspect $IMAGE > /dev/null 2>&1; then
             echo "image_exists=true" >> $GITHUB_OUTPUT
           else
@@ -113,10 +126,10 @@ jobs:
 
   build-fs:
     name: Build F#
-    needs: [calc-docker-img-tag, docker-img-build-push]
+    needs: [docker-img-info, calc-docker-img-tag, docker-img-build-push]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/${{ github.repository_owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.base }}
+      image: ghcr.io/${{ needs.docker-img-info.outputs.owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.base }}
     steps:
       - name: Run actions/checkout
         uses: nblockchain/conventions/.github/actions/dynamic-uses/@master
@@ -129,10 +142,10 @@ jobs:
 
   file-conventions-tests:
     name: Run FileConventions-lib unit tests
-    needs: [build-fs, calc-docker-img-tag]
+    needs: [build-fs, docker-img-info, calc-docker-img-tag]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/${{ github.repository_owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.base }}
+      image: ghcr.io/${{ needs.docker-img-info.outputs.owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.base }}
     steps:
       - name: Run actions/checkout
         uses: nblockchain/conventions/.github/actions/dynamic-uses/@master
@@ -143,10 +156,10 @@ jobs:
 
   build-ts:
     name: Build TypeScript
-    needs: [calc-docker-img-tag, docker-img-build-push]
+    needs: [docker-img-info, calc-docker-img-tag, docker-img-build-push]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/${{ github.repository_owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.base }}
+      image: ghcr.io/${{ needs.docker-img-info.outputs.owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.base }}
     steps:
       - name: Run actions/checkout
         uses: nblockchain/conventions/.github/actions/dynamic-uses/@master
@@ -177,10 +190,10 @@ jobs:
 
   commitlint-plugins-tests:
     name: Run commitlint-related tests
-    needs: [build-ts, calc-docker-img-tag]
+    needs: [build-ts, docker-img-info, calc-docker-img-tag]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/${{ github.repository_owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.base }}
+      image: ghcr.io/${{ needs.docker-img-info.outputs.owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.base }}
     steps:
       - name: Run actions/checkout
         uses: nblockchain/conventions/.github/actions/dynamic-uses/@master
@@ -215,10 +228,11 @@ jobs:
     needs:
       - file-conventions-tests
       - commitlint-plugins-tests
+      - docker-img-info
       - calc-docker-img-tag
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/${{ github.repository_owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.base }}
+      image: ghcr.io/${{ needs.docker-img-info.outputs.owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.base }}
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
