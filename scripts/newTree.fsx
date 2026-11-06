@@ -3,6 +3,7 @@
 open System
 // open System.IO -- REMOVED; use AbsDir/AbsFile everywhere
 open System.Linq
+open System.Net
 open System.Net.Http
 open System.Text.RegularExpressions
 
@@ -13,6 +14,7 @@ open System.Configuration
 
 open Fsdk
 open Fsdk.Process
+open Fsdk.FSharpUtil
 
 #r "nuget: FSharp.Data, Version=5.0.2"
 
@@ -261,31 +263,17 @@ let CheckIsGitHubFork (owner: string) (repo: string) : Option<bool> =
     | _ -> None
 
 let IsUnauthorizedOrNotFound(ex: Exception) : bool =
-    let queue = Collections.Generic.Queue<Exception>()
-    queue.Enqueue ex
-
-    let mutable found = false
-
-    while not found && queue.Count > 0 do
-        let current = queue.Dequeue()
-
-        if not(isNull current) then
-            match current with
-            | :? HttpRequestException as httpEx when httpEx.StatusCode.HasValue ->
-                let code = httpEx.StatusCode.Value
-
-                if code = Net.HttpStatusCode.NotFound
-                   || code = Net.HttpStatusCode.Unauthorized
-                   || code = Net.HttpStatusCode.Forbidden then
-                    found <- true
-            | :? AggregateException as aggEx ->
-                for inner in aggEx.InnerExceptions do
-                    queue.Enqueue inner
-            | _ ->
-                if not(isNull current.InnerException) then
-                    queue.Enqueue current.InnerException
-
-    found
+    match FindException<HttpRequestException> ex with
+    | Some httpRequestException ->
+        match Option.ofNullable httpRequestException.StatusCode with
+        | Some statusCode when
+            statusCode = HttpStatusCode.NotFound
+            || statusCode = HttpStatusCode.Unauthorized
+            || statusCode = HttpStatusCode.Forbidden
+            ->
+            true
+        | _ -> false
+    | None -> false
 
 let ResolvePrUrl(prUrl: string) : string * string =
     let owner, repo, prNumber =
