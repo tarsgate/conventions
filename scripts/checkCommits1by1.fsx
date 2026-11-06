@@ -42,9 +42,28 @@ let errNotPushedOneByOne =
      + Environment.NewLine
      + "https://github.com/nblockchain/conventions/blob/master/scripts/gitPush1by1.fsx")
 
-let errCiNotSuccessful =
-    (5,
-     "CI is not successful (green) for one or more commits, or it passes when a failing test is expected.")
+let expectedFailureSubstrings = [ "failing test"; "failing CI" ]
+
+let ErrCiNotSuccessful commitHash =
+    let errMsg =
+        $"""Thanks for pushing your commits one by one.
+
+However, it has been detected that CI is not successful (green ✅ colour) for one or more commits, or it passes (instead of being red ❌ colour) when a failing test is added (or failing CI is expected), as determined by its commit message.
+
+See commit '{commitHash}' for the first occurrence of this issue."""
+
+    let expectedFailureSubstringsJoined =
+        String.Join(
+            " or ",
+            expectedFailureSubstrings |> Seq.map(fun str -> $"'{str}'")
+        )
+
+    let errMsg =
+        errMsg
+        + Environment.NewLine
+        + $"Hint: if you want to state that a commit can have red CI because of adding a failing test, please make sure that the commit message contains the {expectedFailureSubstringsJoined} term."
+
+    (5, errMsg)
 
 type GithubEventType =
     JsonProvider<"""
@@ -1757,8 +1776,6 @@ if notUsedGitPush1by1 then
     Environment.Exit exitCode
     failwith <| "Unreachable because of: " + errMsg
 
-let expectedFailureSubstrings = [ "failing test"; "failing CI" ]
-
 let expectedFailureSubstringRegexes: List<Regex> =
     List.map
         (fun (str: string) ->
@@ -1834,24 +1851,7 @@ let rec CheckCiStatus
             elif hasFailure then
                 Console.WriteLine()
 
-                Console.Error.WriteLine
-                    $"""Thanks for pushing your commits one by one.
-
-However, it has been detected that CI is not successful (green ✅ colour) for one or more commits, or it passes (instead of being red ❌ colour) when a failing test is added (or failing CI is expected), as determined by its commit message.
-
-See commit '{commitHash}' for the first occurrence of this issue."""
-
-                let expectedFailureSubstringsJoined =
-                    String.Join(
-                        " or ",
-                        expectedFailureSubstrings
-                        |> Seq.map(fun str -> $"'{str}'")
-                    )
-
-                Console.Error.WriteLine
-                    $"Hint: if you want to state that a commit can have red CI because of adding a failing test, please make sure that the commit message contains the {expectedFailureSubstringsJoined} term"
-
-                let exitCode, errMsg = errCiNotSuccessful
+                let exitCode, errMsg = ErrCiNotSuccessful commitHash
                 Console.Error.WriteLine errMsg
                 Environment.Exit exitCode
                 failwith <| "Unreachable because of: " + errMsg
