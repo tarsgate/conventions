@@ -362,6 +362,13 @@
             "mode": "OnlyPublicAPIsInLibraries"
         }
     },
+    "noMutatorFunctions": {
+        "enabled": true,
+        "config": {
+            "allowedMutatorFunctions": [],
+            "additionalMutatorFunctions": []
+        }
+    },
     "hints": {
         "add": [
             "not (a =  b) ===> a <> b",

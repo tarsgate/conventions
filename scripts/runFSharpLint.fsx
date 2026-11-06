@@ -9,7 +9,7 @@ open Fsdk
 
 #load "../src/FileConventions/Helpers.fs"
 
-let version = "0.27.1--date20260709-0311.git-bd94a09"
+let version = "0.27.3--date20261108-0319.git-88f078a"
 
 let targetSol =
     let args = Fsdk.Misc.FsxOnlyArguments()
