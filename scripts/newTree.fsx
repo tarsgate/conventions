@@ -266,9 +266,11 @@ let IsUnauthorizedOrNotFound(ex: Exception) : bool =
     match FindException<HttpRequestException> ex with
     | Some httpRequestException ->
         match Option.ofNullable httpRequestException.StatusCode with
-        | Some statusCode when statusCode = HttpStatusCode.NotFound
-                               || statusCode = HttpStatusCode.Unauthorized
-                               || statusCode = HttpStatusCode.Forbidden ->
+        | Some statusCode when
+            statusCode = HttpStatusCode.NotFound
+            || statusCode = HttpStatusCode.Unauthorized
+            || statusCode = HttpStatusCode.Forbidden
+            ->
             true
         | _ -> false
     | None -> false
