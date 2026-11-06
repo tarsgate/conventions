@@ -1223,6 +1223,21 @@ Bla blah.   Blah bla.`;
     expect(tooManySpaces5.status).not.toBe(0);
 });
 
+test("too-many-spaces6", () => {
+    const commitMsgWithNestedBlocks =
+        "foo: this is only a title" +
+        "\n\n" +
+        "This is what AI told me:\n```\n" +
+        " ### Step-by-Step Breakdown\n" +
+        " ```\n" +
+        " gh repo view ${{ github.repository }} --json parent\n" +
+        " ```\n" +
+        " The above code does blah blah...\n" +
+        "```";
+    const tooManySpaces6 = runCommitLintOnMsg(commitMsgWithNestedBlocks);
+    expect(tooManySpaces6.status).toBe(0);
+});
+
 test("trailing-whitespace1", () => {
     const commitMsgWithNoTrailingWhiteSpace = `foo: this is only a title
 
