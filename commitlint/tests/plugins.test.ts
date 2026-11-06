@@ -1234,9 +1234,7 @@ test("too-many-spaces6", () => {
         " ```\n" +
         " The above code does blah blah...\n" +
         "```";
-    const tooManySpaces6 = runCommitLintOnMsg(
-        commitMsgWithNestedBlocks
-    );
+    const tooManySpaces6 = runCommitLintOnMsg(commitMsgWithNestedBlocks);
     expect(tooManySpaces6.status).toBe(0);
 });
 

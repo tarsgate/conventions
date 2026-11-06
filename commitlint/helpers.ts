@@ -221,7 +221,7 @@ export abstract class Helpers {
     }
 
     public static removeAllCodeBlocks(text: string) {
-        return text.replace(/```[\s\S]*?```/g, "");
+        return text.replace(/```(?:[^\r\n]*?|[\s\S]*?(?<=[\r\n]))```/g, "");
     }
 
     public static splitByEOLs(text: string, numberOfEols: number) {
