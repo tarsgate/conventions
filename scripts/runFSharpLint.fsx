@@ -124,28 +124,19 @@ Process
     .UnwrapDefault()
 |> ignore<string>
 
-let RunFSharpLint(target: FileInfo) =
-    Process.ExecDefault(
-        sprintf "dotnet dotnet-fsharplint lint %s" target.FullName
-    )
+let RunFSharpLint(targetPath: string) =
+    Process.ExecDefault(sprintf "dotnet dotnet-fsharplint lint %s" targetPath)
 
-RunFSharpLint(targetSolution).UnwrapDefault() |> ignore<string>
+RunFSharpLint(targetSolution.FullName)
+    .UnwrapDefault()
+|> ignore<string>
 
-// check .fsx files in target dir
-let allFiles = Fsdk.Misc.GetAllFilesRecursively targetDir |> Seq.map FileInfo
-
-let fsxFiles =
-    allFiles |> Seq.filter(fun filename -> filename.Extension = ".fsx")
-
-let results = fsxFiles |> Seq.map RunFSharpLint
-
-let violationsExist =
-    results
-    |> Seq.exists(fun result ->
-        match result.Result with
-        | Process.Success _ -> false
-        | _ -> true
-    )
-
-if violationsExist then
-    failwith "One or more fsharplint runs on .fsx files failed"
+RunFSharpLint(
+    sprintf
+        "%s%c**%c*.fsx"
+        targetDir.FullName
+        Path.DirectorySeparatorChar
+        Path.DirectorySeparatorChar
+)
+    .UnwrapDefault()
+|> ignore<string>
