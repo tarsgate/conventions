@@ -402,7 +402,7 @@ let DetectInconsistentVersionsInGitHubCIWorkflow(fileInfos: seq<FileInfo>) =
                     let yaml = YamlStream()
                     use reader = new StreamReader(fileInfo.FullName)
                     yaml.Load reader
-                    yaml.Documents[0].RootNode
+                    yaml.Documents.[0].RootNode
                 )
                 fileInfos
 

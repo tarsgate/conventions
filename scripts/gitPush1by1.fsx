@@ -119,8 +119,10 @@ let GetLastNthCommitFromRemoteBranch
         (Misc.CrossPlatformStringSplitInLines gitShowProcOutput)
             .First()
 
-    // split this line: commit 938634a3e7d4dc7e6dd357927a16165120bbea68 (HEAD -> master, origin/master, origin/HEAD)
-    let commitHash = firstLine.Split([| " " |], StringSplitOptions.None).[1]
+    // split a line like this: commit 938634a3e7d4dc7e6dd357927a16165120bbea68 (HEAD -> master, origin/master, origin/HEAD)
+    let commitHash =
+        firstLine.Split(Array.singleton " ", StringSplitOptions.None).[1]
+
     commitHash
 
 [<TailCall>]
