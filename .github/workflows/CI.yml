@@ -20,6 +20,7 @@ env:
 
 jobs:
   docker-img-info:
+    name: "Pre-CI: retreive docker image info"
     runs-on: ubuntu-24.04
     outputs:
       owner: ${{ steps.owner.outputs.owner }}
@@ -33,6 +34,7 @@ jobs:
           echo "owner=${UPSTREAM_OWNER:-${{ github.repository_owner }}}" >> $GITHUB_OUTPUT
 
   calc-docker-img-tag:
+    name: "Pre-CI: calculate docker image hash"
     runs-on: ubuntu-24.04
     outputs:
       base: ${{ steps.md5sum.outputs.base }}
@@ -48,6 +50,7 @@ jobs:
           git clean -fdx
 
   docker-img-build-push:
+    name: "Pre-CI: maybe push new docker image"
     needs: [docker-img-info, calc-docker-img-tag]
     runs-on: ubuntu-24.04
     permissions:
