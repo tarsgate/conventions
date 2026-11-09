@@ -153,9 +153,9 @@ jobs:
           git --version
           node --version
           npm --version
-      - name: Install yarn modules
+      - name: Install npm modules
         run: |
-          yarn add --dev typescript@$TYPESCRIPT_VERSION eslint@$ESLINT_VERSION @eslint/js@$ESLINT_VERSION typescript-eslint@$TYPESCRIPT_ESLINT_VERSION
+          npm install --save-dev typescript@$TYPESCRIPT_VERSION eslint@$ESLINT_VERSION @eslint/js@$ESLINT_VERSION typescript-eslint@$TYPESCRIPT_ESLINT_VERSION
       - name: Install commitlint dependencies
         shell: bash
         run: |
@@ -182,9 +182,9 @@ jobs:
         uses: nblockchain/conventions/.github/actions/dynamic-uses/@master
         with:
           uses: actions/checkout@v${{ env.CHECKOUT_ACTION_VERSION }}
-      - name: Install yarn modules
+      - name: Install npm modules
         run: |
-          yarn add --dev typescript@$TYPESCRIPT_VERSION ts-node
+          npm install --save-dev typescript@$TYPESCRIPT_VERSION ts-node
       - name: Install commitlint dependencies
         run: |
           . commitlint/version.config
@@ -196,7 +196,6 @@ jobs:
           git --version
           node --version
           npm --version
-          yarn --version
           npx tsc --version
       - name: Install commitlint
         run: ./commitlint.sh --version
@@ -204,7 +203,7 @@ jobs:
         run: |
           # remove *.js files so that the same tests don't run twice
           rm ./commitlint/tests/*.js
-          yarn test
+          npm test
 
   sanity-check:
     name: Sanity check
