@@ -3,6 +3,7 @@
 open System
 // open System.IO -- REMOVED; use AbsDir/AbsFile everywhere
 open System.Linq
+open System.Net
 open System.Net.Http
 open System.Text.RegularExpressions
 
@@ -13,6 +14,7 @@ open System.Configuration
 
 open Fsdk
 open Fsdk.Process
+open Fsdk.FSharpUtil
 
 #r "nuget: FSharp.Data, Version=5.0.2"
 
@@ -146,6 +148,10 @@ let errFailedToFetchPrData =
     (11,
      "Failed to fetch PR data from GitHub API: check your internet connection?")
 
+let errPrNotFoundOrUnauthorized =
+    (12,
+     "Failed to fetch PR data from GitHub API: unauthorized or PR not found (is the repository private?)")
+
 type ArgType =
     | Url of fullUrl: string * owner: string * headBranch: string
     | FolderName
@@ -256,6 +262,19 @@ let CheckIsGitHubFork (owner: string) (repo: string) : Option<bool> =
     with
     | _ -> None
 
+let IsUnauthorizedOrNotFound(ex: Exception) : bool =
+    match FindException<HttpRequestException> ex with
+    | Some httpRequestException ->
+        match Option.ofNullable httpRequestException.StatusCode with
+        | Some statusCode when
+            statusCode = HttpStatusCode.NotFound
+            || statusCode = HttpStatusCode.Unauthorized
+            || statusCode = HttpStatusCode.Forbidden
+            ->
+            true
+        | _ -> false
+    | None -> false
+
 let ResolvePrUrl(prUrl: string) : string * string =
     let owner, repo, prNumber =
         match TryParseGitHubPullRequestUrl prUrl with
@@ -274,8 +293,13 @@ let ResolvePrUrl(prUrl: string) : string * string =
         try
             httpClient.GetStringAsync(apiUrl).Result
         with
-        | _ ->
-            let exitCode, errMsg = errFailedToFetchPrData
+        | ex ->
+            let exitCode, errMsg =
+                if IsUnauthorizedOrNotFound ex then
+                    errPrNotFoundOrUnauthorized
+                else
+                    errFailedToFetchPrData
+
             Console.Error.WriteLine errMsg
             Environment.Exit exitCode
             failwith <| "Unreachable because of: " + errMsg
