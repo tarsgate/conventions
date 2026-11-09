@@ -1,10 +1,10 @@
 diff --git a/Dockerfile.base b/Dockerfile.base
-index 099e36d..1eb83c4 100644
+index bdb32ea..28b8bd0 100644
 --- a/Dockerfile.base
 +++ b/Dockerfile.base
 @@ -16,6 +16,128 @@ RUN apt --yes install --no-install-recommends dotnet-sdk-10.0
  RUN apt --yes install --no-install-recommends npm
- RUN npm install --global yarn
+ RUN npm install --global pnpm
  
 +RUN apt --yes install --no-install-recommends openssh-server
 +RUN apt --yes install --no-install-recommends cron

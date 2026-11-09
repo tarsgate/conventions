@@ -12,9 +12,9 @@ RUN apt --yes install --no-install-recommends ca-certificates
 
 RUN apt --yes install --no-install-recommends dotnet-sdk-10.0
 
-# commitlint depends on npm and yarn
+# commitlint depends on npm and pnpm
 RUN apt --yes install --no-install-recommends npm
-RUN npm install --global yarn
+RUN npm install --global pnpm
 
 # cleanup apt cache to reduce img size & avoid unneeded files in the final layer
 RUN rm -rf /var/lib/apt/lists/*
