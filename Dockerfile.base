@@ -1,6 +1,6 @@
 FROM ubuntu:26.04
 
-RUN apt --yes update
+RUN apt --yes update --fix-missing
 
 RUN apt --yes install --no-install-recommends git
 
