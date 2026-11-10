@@ -30,8 +30,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          UPSTREAM_OWNER=$(gh repo view ${{ github.repository }} --json parent --jq '.parent.owner.login // empty')
-          echo "owner=${UPSTREAM_OWNER:-${{ github.repository_owner }}}" >> $GITHUB_OUTPUT
+          OWNER=$(gh repo view ${{ github.repository }} --json parent,owner --template '{{if .parent}}{{.parent.owner.login}}{{else}}{{.owner.login}}{{end}}')
+          echo "owner=$OWNER" >> $GITHUB_OUTPUT
 
   calc-docker-img-tag:
     name: "Pre-CI: calculate docker image hash"
