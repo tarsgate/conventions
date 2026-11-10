@@ -286,6 +286,7 @@ jobs:
       - name: fantomless
         run: |
           dotnet tool install fantomless-tool --version 4.7.997-prerelease
+          > patch invokation here <
           dotnet fantomless --recurse .
           git diff --exit-code || (echo "Formatting did not match (see above diff), please run fantomless-tool" >&2 && exit 1)
       - name: Print versions
