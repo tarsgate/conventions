@@ -759,6 +759,24 @@ test("footer-notes-misplacement-5", () => {
     expect(footerNotesMisplacement5.status).toBe(0);
 });
 
+test("footer-notes-misplacement-6", () => {
+    const commitMsgWithProgressInBlock =
+        "scripts/make.fsx: fix build error\n\n" +
+        "We recently got a failure on yarn modules install:\n\n" +
+        "```\n" +
+        "[1/4] Resolving packages...\n" +
+        "warning eslint: no longer supported\n" +
+        "[2/4] Fetching packages...\n" +
+        "error Error: Request failed 404 Not Found\n\n" +
+        "Error: Process completed with exit code 1.\n" +
+        "```";
+
+    const footerNotesMisplacement6 = runCommitLintOnMsg(
+        commitMsgWithProgressInBlock
+    );
+    expect(footerNotesMisplacement6.status).toBe(0);
+});
+
 test("footer-refs-validity1", () => {
     const commmitMsgWithCorrectFooter = `foo: this is only a title
 

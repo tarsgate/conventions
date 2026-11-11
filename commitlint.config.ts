@@ -133,8 +133,10 @@ export default {
                     );
                 },
 
-                "footer-notes-misplacement": ({ body }: { body: any }) => {
-                    const maybeBody = Dyn.tryCast(body).to(String);
+                "footer-notes-misplacement": ({ raw }: { raw: any }) => {
+                    const maybeBody = Helpers.extractBodyFromCommitMsg(
+                        extractStringFromCommitlintParam("raw", raw)
+                    );
                     return convertToCommitlintResponse(
                         Plugins.footerNotesMisplacement(maybeBody)
                     );
