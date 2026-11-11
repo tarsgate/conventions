@@ -42,17 +42,22 @@ jobs:
     permissions:
       contents: read
       packages: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      HEAD_OWNER: ${{ github.event.pull_request.head.repo.owner.login || github.repository_owner }}
+      IS_FORK_PR: ${{ github.event.pull_request.head.repo.fork || 'false' }}
     outputs:
       owner: ${{ steps.check_base.outputs.owner }}
     steps:
       - uses: actions/checkout@v4
       - name: Determine upstream repository owner
         id: upstream_owner
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           OWNER=$(gh repo view ${{ github.repository }} --json parent,owner --template '{{if .parent}}{{.parent.owner.login}}{{else}}{{.owner.login}}{{end}}')
           echo "owner=$OWNER" >> $GITHUB_OUTPUT
+          echo "UPSTREAM_OWNER=$OWNER" >> $GITHUB_ENV
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
@@ -61,53 +66,20 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Check if image exists (base)
         id: check_base
-        run: |
-          TAG=${{ needs.calc-docker-img-tag.outputs.base }}
-          UPSTREAM_OWNER=${{ steps.upstream_owner.outputs.owner }}
-          HEAD_OWNER=${{ github.event.pull_request.head.repo.owner.login || github.repository_owner }}
-          UPSTREAM_IMAGE=ghcr.io/$UPSTREAM_OWNER/conventions-ci:$TAG
-          HEAD_IMAGE=ghcr.io/$HEAD_OWNER/conventions-ci:$TAG
-          if docker manifest inspect $UPSTREAM_IMAGE > /dev/null 2>&1; then
-            echo "image_exists=true" >> $GITHUB_OUTPUT
-            echo "owner=$UPSTREAM_OWNER" >> $GITHUB_OUTPUT
-          elif docker manifest inspect $HEAD_IMAGE > /dev/null 2>&1; then
-            echo "image_exists=true" >> $GITHUB_OUTPUT
-            echo "owner=$HEAD_OWNER" >> $GITHUB_OUTPUT
-          else
-            echo "image_exists=false" >> $GITHUB_OUTPUT
-            echo "owner=$HEAD_OWNER" >> $GITHUB_OUTPUT
-          fi
+        run: ./scripts/checkOrPollDockerImage.sh "${{ needs.calc-docker-img-tag.outputs.base }}"
       - name: Build and push image (base)
         if: steps.check_base.outputs.image_exists == 'false'
         run: |
-          if [ "${{ github.event.pull_request.head.repo.fork }}" = "true" ]; then
-            echo "::error::CI Docker image not found in upstream or fork registry. Please ensure CI has completed on your fork branch so the container image is published."
-            exit 1
-          fi
           TAG=${{ needs.calc-docker-img-tag.outputs.base }}
           IMAGE=ghcr.io/${{ github.repository_owner }}/conventions-ci
           docker build --tag $IMAGE:$TAG --file Dockerfile.base .
           docker push $IMAGE:$TAG
       - name: Check if image exists (extras)
         id: check_extras
-        run: |
-          TAG=${{ needs.calc-docker-img-tag.outputs.extras }}
-          UPSTREAM_OWNER=${{ steps.upstream_owner.outputs.owner }}
-          HEAD_OWNER=${{ github.event.pull_request.head.repo.owner.login || github.repository_owner }}
-          UPSTREAM_IMAGE=ghcr.io/$UPSTREAM_OWNER/conventions-ci:$TAG
-          HEAD_IMAGE=ghcr.io/$HEAD_OWNER/conventions-ci:$TAG
-          if docker manifest inspect $UPSTREAM_IMAGE > /dev/null 2>&1 || docker manifest inspect $HEAD_IMAGE > /dev/null 2>&1; then
-            echo "image_exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "image_exists=false" >> $GITHUB_OUTPUT
-          fi
+        run: ./scripts/checkOrPollDockerImage.sh "${{ needs.calc-docker-img-tag.outputs.extras }}"
       - name: Build and push image (extras)
         if: steps.check_extras.outputs.image_exists == 'false'
         run: |
-          if [ "${{ github.event.pull_request.head.repo.fork }}" = "true" ]; then
-            echo "::error::CI Docker extras image not found in upstream or fork registry. Please ensure CI has completed on your fork branch so the container image is published."
-            exit 1
-          fi
           TAG=${{ needs.calc-docker-img-tag.outputs.extras }}
           IMAGE=ghcr.io/${{ github.repository_owner }}/conventions-ci
           git apply Dockerfile.extras
