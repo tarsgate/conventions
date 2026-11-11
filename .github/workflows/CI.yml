@@ -63,21 +63,27 @@ jobs:
         id: check_base
         run: |
           TAG=${{ needs.calc-docker-img-tag.outputs.base }}
-          UPSTREAM_IMAGE=ghcr.io/${{ steps.upstream_owner.outputs.owner }}/conventions-ci:$TAG
-          FORK_IMAGE=ghcr.io/${{ github.repository_owner }}/conventions-ci:$TAG
+          UPSTREAM_OWNER=${{ steps.upstream_owner.outputs.owner }}
+          HEAD_OWNER=${{ github.event.pull_request.head.repo.owner.login || github.repository_owner }}
+          UPSTREAM_IMAGE=ghcr.io/$UPSTREAM_OWNER/conventions-ci:$TAG
+          HEAD_IMAGE=ghcr.io/$HEAD_OWNER/conventions-ci:$TAG
           if docker manifest inspect $UPSTREAM_IMAGE > /dev/null 2>&1; then
             echo "image_exists=true" >> $GITHUB_OUTPUT
-            echo "owner=${{ steps.upstream_owner.outputs.owner }}" >> $GITHUB_OUTPUT
-          elif docker manifest inspect $FORK_IMAGE > /dev/null 2>&1; then
+            echo "owner=$UPSTREAM_OWNER" >> $GITHUB_OUTPUT
+          elif docker manifest inspect $HEAD_IMAGE > /dev/null 2>&1; then
             echo "image_exists=true" >> $GITHUB_OUTPUT
-            echo "owner=${{ github.repository_owner }}" >> $GITHUB_OUTPUT
+            echo "owner=$HEAD_OWNER" >> $GITHUB_OUTPUT
           else
             echo "image_exists=false" >> $GITHUB_OUTPUT
-            echo "owner=${{ github.repository_owner }}" >> $GITHUB_OUTPUT
+            echo "owner=$HEAD_OWNER" >> $GITHUB_OUTPUT
           fi
       - name: Build and push image (base)
         if: steps.check_base.outputs.image_exists == 'false'
         run: |
+          if [ "${{ github.event.pull_request.head.repo.fork }}" = "true" ]; then
+            echo "::error::CI Docker image not found in upstream or fork registry. Please ensure CI has completed on your fork branch so the container image is published."
+            exit 1
+          fi
           TAG=${{ needs.calc-docker-img-tag.outputs.base }}
           IMAGE=ghcr.io/${{ github.repository_owner }}/conventions-ci
           docker build --tag $IMAGE:$TAG --file Dockerfile.base .
@@ -86,9 +92,11 @@ jobs:
         id: check_extras
         run: |
           TAG=${{ needs.calc-docker-img-tag.outputs.extras }}
-          UPSTREAM_IMAGE=ghcr.io/${{ steps.upstream_owner.outputs.owner }}/conventions-ci:$TAG
-          FORK_IMAGE=ghcr.io/${{ github.repository_owner }}/conventions-ci:$TAG
-          if docker manifest inspect $UPSTREAM_IMAGE > /dev/null 2>&1 || docker manifest inspect $FORK_IMAGE > /dev/null 2>&1; then
+          UPSTREAM_OWNER=${{ steps.upstream_owner.outputs.owner }}
+          HEAD_OWNER=${{ github.event.pull_request.head.repo.owner.login || github.repository_owner }}
+          UPSTREAM_IMAGE=ghcr.io/$UPSTREAM_OWNER/conventions-ci:$TAG
+          HEAD_IMAGE=ghcr.io/$HEAD_OWNER/conventions-ci:$TAG
+          if docker manifest inspect $UPSTREAM_IMAGE > /dev/null 2>&1 || docker manifest inspect $HEAD_IMAGE > /dev/null 2>&1; then
             echo "image_exists=true" >> $GITHUB_OUTPUT
           else
             echo "image_exists=false" >> $GITHUB_OUTPUT
@@ -96,6 +104,10 @@ jobs:
       - name: Build and push image (extras)
         if: steps.check_extras.outputs.image_exists == 'false'
         run: |
+          if [ "${{ github.event.pull_request.head.repo.fork }}" = "true" ]; then
+            echo "::error::CI Docker extras image not found in upstream or fork registry. Please ensure CI has completed on your fork branch so the container image is published."
+            exit 1
+          fi
           TAG=${{ needs.calc-docker-img-tag.outputs.extras }}
           IMAGE=ghcr.io/${{ github.repository_owner }}/conventions-ci
           git apply Dockerfile.extras
