@@ -102,7 +102,7 @@ jobs:
           docker build --tag $IMAGE:$TAG --file Dockerfile.base .
           docker push $IMAGE:$TAG
       - name: Delete other GHCR package versions (keep current)
-        if: steps.check_base.outputs.image_exists == 'false' || steps.check_extras.outputs.image_exists == 'false'
+        if: github.ref == 'refs/heads/master' && (steps.check_base.outputs.image_exists == 'false' || steps.check_extras.outputs.image_exists == 'false')
         env:
           TAG_BASE: ${{ needs.calc-docker-img-tag.outputs.base }}
           TAG_EXTRAS: ${{ needs.calc-docker-img-tag.outputs.extras }}
