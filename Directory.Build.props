@@ -1,7 +1,8 @@
 <Project>
   <PropertyGroup>
     <WarnOn>
-      FS0193
+      $(WarnOn)
+      ;FS0193
       ;FS1182
       ;FS3218
       ;FS3569
