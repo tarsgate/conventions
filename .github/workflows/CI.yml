@@ -180,7 +180,7 @@ jobs:
         shell: bash
         run: |
           source commitlint/version.config
-          npm install --verbose @commitlint/types@$COMMITLINT_VERSION
+          pnpm add @commitlint/types@$COMMITLINT_VERSION
       - name: Print versions
         run: |
           git --version
@@ -208,7 +208,7 @@ jobs:
       - name: Install commitlint dependencies
         run: |
           . commitlint/version.config
-          npm install --verbose @commitlint/types@$COMMITLINT_VERSION
+          pnpm add @commitlint/types@$COMMITLINT_VERSION
       - name: Run typescript compiler
         run: npx tsc
       - name: Print versions
@@ -299,7 +299,7 @@ jobs:
           # Otherwise we get permission denied error in the CI.
           chmod 777 --recursive .
       - name: Install prettier
-        run: npm install --verbose
+        run: pnpm install
       - name: Run "prettier" to check the style of our TypeScript and YML code
         run: |
           npm run format
