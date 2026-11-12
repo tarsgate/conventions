@@ -21,6 +21,8 @@ env:
 jobs:
   calc-docker-img-tag:
     name: "Pre-CI: calculate docker image hash"
+    # we don't want schedule triggers to affect forks in any way
+    if: github.event_name != 'schedule' || github.event.repository.fork == false
     runs-on: ubuntu-24.04
     outputs:
       base: ${{ steps.md5sum.outputs.base }}
