@@ -7,7 +7,9 @@ import { RuleConfigSeverity } from "@commitlint/types";
 
 const bodyMaxLineLength = 64;
 const headerMaxLineLength = 50;
+/* see comment below in footer-max-line-length rule to see why this is disabled
 const footerMaxLineLength = 150;
+*/
 
 function notStringErrorMessage(variableName: string): string {
     return `This is unexpected because ${variableName} should have been a string`;
@@ -46,12 +48,15 @@ export default {
         ],
         "body-paragraph-line-min-length": [RuleConfigSeverity.Error, "always"],
         "empty-wip": [RuleConfigSeverity.Error, "always"],
+        /* disabling these 2 rules above as a workaround for commitlint-parser detecting trailers
+   inside blocks as already part of the footer, see https://github.com/tarsgate/conventions/pull/389
         "footer-leading-blank": [RuleConfigSeverity.Warning, "always"],
         "footer-max-line-length": [
             RuleConfigSeverity.Error,
             "always",
             footerMaxLineLength,
         ],
+*/
         "footer-notes-misplacement": [RuleConfigSeverity.Error, "always"],
         "footer-refs-validity": [RuleConfigSeverity.Error, "always"],
         "header-max-length-with-suggestions": [
