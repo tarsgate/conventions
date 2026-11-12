@@ -21,6 +21,8 @@ env:
 jobs:
   docker-img-info:
     name: "Pre-CI: retreive docker image info"
+    # we don't want schedule triggers to affect forks in any way
+    if: github.event_name != 'schedule' || github.event.repository.fork == false
     runs-on: ubuntu-24.04
     outputs:
       owner: ${{ steps.owner.outputs.owner }}
@@ -35,6 +37,7 @@ jobs:
 
   calc-docker-img-tag:
     name: "Pre-CI: calculate docker image hash"
+    needs: docker-img-info
     runs-on: ubuntu-24.04
     outputs:
       base: ${{ steps.md5sum.outputs.base }}
