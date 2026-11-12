@@ -69,22 +69,13 @@ jobs:
         run: ./scripts/checkOrPollDockerImage.sh "${{ needs.calc-docker-img-tag.outputs.base }}"
       - name: Build and push image (base)
         if: steps.check_base.outputs.image_exists == 'false'
-        run: |
-          TAG=${{ needs.calc-docker-img-tag.outputs.base }}
-          IMAGE=ghcr.io/${{ github.repository_owner }}/conventions-ci
-          docker build --tag $IMAGE:$TAG --file Dockerfile.base .
-          docker push $IMAGE:$TAG
+        run: ./scripts/buildAndPushDockerImage.sh "${{ needs.calc-docker-img-tag.outputs.base }}"
       - name: Check if image exists (extras)
         id: check_extras
         run: ./scripts/checkOrPollDockerImage.sh "${{ needs.calc-docker-img-tag.outputs.extras }}"
       - name: Build and push image (extras)
         if: steps.check_extras.outputs.image_exists == 'false'
-        run: |
-          TAG=${{ needs.calc-docker-img-tag.outputs.extras }}
-          IMAGE=ghcr.io/${{ github.repository_owner }}/conventions-ci
-          git apply Dockerfile.extras
-          docker build --tag $IMAGE:$TAG --file Dockerfile.base .
-          docker push $IMAGE:$TAG
+        run: ./scripts/buildAndPushDockerImage.sh "${{ needs.calc-docker-img-tag.outputs.extras }}" Dockerfile.extras
       - name: Delete other GHCR package versions (keep current)
         if: github.ref == 'refs/heads/master' && (steps.check_base.outputs.image_exists == 'false' || steps.check_extras.outputs.image_exists == 'false')
         env:
