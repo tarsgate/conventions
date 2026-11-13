@@ -49,7 +49,8 @@ jobs:
       HEAD_OWNER: ${{ github.event.pull_request.head.repo.owner.login || github.repository_owner }}
       IS_FORK_PR: ${{ github.event.pull_request.head.repo.fork || 'false' }}
     outputs:
-      owner: ${{ steps.check_base.outputs.owner }}
+      owner_base: ${{ steps.check_base.outputs.owner }}
+      owner_extras: ${{ steps.check_extras.outputs.owner }}
     steps:
       - uses: actions/checkout@v4
       - name: Determine upstream repository owner
@@ -109,7 +110,7 @@ jobs:
     needs: [calc-docker-img-tag, docker-img-build-push]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/${{ needs.docker-img-build-push.outputs.owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.base }}
+      image: ghcr.io/${{ needs.docker-img-build-push.outputs.owner_base }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.base }}
     steps:
       - name: Run actions/checkout
         uses: nblockchain/conventions/.github/actions/dynamic-uses/@master
@@ -125,7 +126,7 @@ jobs:
     needs: [build-fs, calc-docker-img-tag, docker-img-build-push]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/${{ needs.docker-img-build-push.outputs.owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.base }}
+      image: ghcr.io/${{ needs.docker-img-build-push.outputs.owner_base }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.base }}
     steps:
       - name: Run actions/checkout
         uses: nblockchain/conventions/.github/actions/dynamic-uses/@master
@@ -139,7 +140,7 @@ jobs:
     needs: [calc-docker-img-tag, docker-img-build-push]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/${{ needs.docker-img-build-push.outputs.owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.base }}
+      image: ghcr.io/${{ needs.docker-img-build-push.outputs.owner_base }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.base }}
     steps:
       - name: Run actions/checkout
         uses: nblockchain/conventions/.github/actions/dynamic-uses/@master
@@ -173,7 +174,7 @@ jobs:
     needs: [build-ts, calc-docker-img-tag, docker-img-build-push]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/${{ needs.docker-img-build-push.outputs.owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.base }}
+      image: ghcr.io/${{ needs.docker-img-build-push.outputs.owner_base }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.base }}
     steps:
       - name: Run actions/checkout
         uses: nblockchain/conventions/.github/actions/dynamic-uses/@master
@@ -212,7 +213,7 @@ jobs:
       - calc-docker-img-tag
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/${{ needs.docker-img-build-push.outputs.owner }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.base }}
+      image: ghcr.io/${{ needs.docker-img-build-push.outputs.owner_base }}/conventions-ci:${{ needs.calc-docker-img-tag.outputs.base }}
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
