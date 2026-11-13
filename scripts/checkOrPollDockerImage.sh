@@ -9,12 +9,16 @@ TAG="$1"
 OUTPUT_FILE="${GITHUB_OUTPUT:-/dev/stdout}"
 
 image_exists_in() {
-  docker manifest inspect "ghcr.io/$1/conventions-ci:$TAG" > /dev/null 2>&1
+  local owner
+  owner=$(echo "$1" | tr '[:upper:]' '[:lower:]')
+  docker manifest inspect "ghcr.io/$owner/conventions-ci:$TAG" > /dev/null 2>&1
 }
 
 set_found() {
+  local owner
+  owner=$(echo "$1" | tr '[:upper:]' '[:lower:]')
   echo "image_exists=true" >> "$OUTPUT_FILE"
-  echo "owner=$1" >> "$OUTPUT_FILE"
+  echo "owner=$owner" >> "$OUTPUT_FILE"
 }
 
 # Prints "<total_count> <status> <conclusion> <html_url>" for the CI runs of the fork's PR head commit
@@ -36,8 +40,9 @@ while true; do
     exit 0
   fi
   if [ "$IS_FORK_PR" != "true" ]; then
+    owner=$(echo "$HEAD_OWNER" | tr '[:upper:]' '[:lower:]')
     echo "image_exists=false" >> "$OUTPUT_FILE"
-    echo "owner=$HEAD_OWNER" >> "$OUTPUT_FILE"
+    echo "owner=$owner" >> "$OUTPUT_FILE"
     exit 0
   fi
 
