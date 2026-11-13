@@ -1,5 +1,8 @@
 # top entries are newer, bottom ones older
 
+# scripts: fmt all .sh files w/ prettier-plugin-sh
+48d296294aebe49880c04a298953d3b1ffbef0f6
+
 # commitlint: move abbreviations to its own file
 1a1f8b5337a1787b7b7e3431518e7e21f3c4a121
 
