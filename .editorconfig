@@ -40,6 +40,7 @@ indent_size = 2
 # Shell scripts
 [*.sh]
 end_of_line = lf
+indent_size = 4
 
 [*.{cmd, bat}]
 end_of_line = crlf
