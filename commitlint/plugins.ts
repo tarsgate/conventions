@@ -558,24 +558,34 @@ export abstract class Plugins {
     public static trailingWhitespace(rawStr: string): Option<string> {
         let offence = false;
 
+        // NOTE: we don't use Helpers.linesWithCodeBlocksBlankedOut here because
+        // trailing whitespace in a code block delimiter is also an offence;
+        // only the contents of code blocks are exempt from this rule
         let lineIndex = 0;
-        const lines = Helpers.linesWithCodeBlocksBlankedOut(rawStr);
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
+        const lines = Helpers.splitByEOLs(rawStr, 1);
+        let inCodeBlock = false;
+        for (const line of lines) {
+            lineIndex++;
+
+            const lineIsCodeBlockDelimiter = Helpers.isCodeBlockDelimiter(line);
+            if (lineIsCodeBlockDelimiter) {
+                inCodeBlock = !inCodeBlock;
+            } else if (inCodeBlock) {
+                continue;
+            }
+
             if (line.length === 0) {
                 continue;
             }
 
             if (line[0] == " " || line[0] == "\t") {
                 offence = true;
-                lineIndex = i + 1;
                 break;
             }
 
             const lastChar = line[line.length - 1];
             if (lastChar == " " || lastChar == "\t") {
                 offence = true;
-                lineIndex = i + 1;
                 break;
             }
         }

@@ -1323,6 +1323,28 @@ test("trailing-whitespace6", () => {
     expect(trailingWhitespace6.status).toBe(0);
 });
 
+test("trailing-whitespace7", () => {
+    const commitMsgWithTrailingWhiteSpaceInCodeBlockDelimiter =
+        "foo: this is only a title" +
+        "\n\n" +
+        "Bar baz:\n\n``` \ntype Foo = string\n```";
+    const trailingWhitespace7 = runCommitLintOnMsg(
+        commitMsgWithTrailingWhiteSpaceInCodeBlockDelimiter
+    );
+    expect(trailingWhitespace7.status).not.toBe(0);
+});
+
+test("trailing-whitespace8", () => {
+    const commitMsgWithTrailingWhiteSpaceInCodeBlockDelimiterEnding =
+        "foo: this is only a title" +
+        "\n\n" +
+        "Bar baz:\n\n```\ntype Foo = string\n``` ";
+    const trailingWhitespace7 = runCommitLintOnMsg(
+        commitMsgWithTrailingWhiteSpaceInCodeBlockDelimiterEnding
+    );
+    expect(trailingWhitespace7.status).not.toBe(0);
+});
+
 test("type-space-after-colon1", () => {
     const commitMsgWithNoSpace = "foo:bar";
     const typeSpaceAfterColon1 = runCommitLintOnMsg(commitMsgWithNoSpace);
