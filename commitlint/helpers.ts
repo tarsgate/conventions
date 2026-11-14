@@ -220,10 +220,6 @@ export abstract class Helpers {
         );
     }
 
-    public static removeAllCodeBlocks(text: string) {
-        return text.replace(/```(?:[^\r\n]*?|[\s\S]*?(?<=\r?\n))```/g, "");
-    }
-
     public static splitByEOLs(text: string, numberOfEols: number) {
         Helpers.assertHigherThanZero(numberOfEols);
 
@@ -242,6 +238,47 @@ export abstract class Helpers {
         } while (numberOfEols != 0);
 
         return preparedText.split(separator);
+    }
+
+    // NOTE: instead of removing code blocks from the text (which would shift the
+    // line indexes and thus make line numbers reported to the user wrong), we
+    // return one entry per line of the original text, with the lines that belong
+    // to code blocks (including the delimiters) blanked out. Blank lines are then
+    // ignored by the rules that use this, and behave like paragraph separators
+    // for the ones that split the text into paragraphs.
+    public static linesWithCodeBlocksBlankedOut(text: string): Array<string> {
+        const lines = Helpers.splitByEOLs(text, 1);
+        const result: Array<string> = Empty.array<string>();
+        const blankLine = Empty.string();
+        let inCodeBlock = false;
+        for (const line of lines) {
+            if (Helpers.isCodeBlockDelimiter(line)) {
+                inCodeBlock = !inCodeBlock;
+                result.push(blankLine);
+                continue;
+            }
+            result.push(inCodeBlock ? blankLine : line);
+        }
+        return result;
+    }
+
+    public static splitIntoParagraphs(lines: Array<string>): Array<string> {
+        const paragraphs: Array<string> = Empty.array<string>();
+        let currentParagraphLines: Array<string> = Empty.array<string>();
+        for (const line of lines) {
+            if (line.length === 0) {
+                if (currentParagraphLines.length > 0) {
+                    paragraphs.push(currentParagraphLines.join("\n"));
+                    currentParagraphLines = Empty.array<string>();
+                }
+                continue;
+            }
+            currentParagraphLines.push(line);
+        }
+        if (currentParagraphLines.length > 0) {
+            paragraphs.push(currentParagraphLines.join("\n"));
+        }
+        return paragraphs;
     }
 
     // this function is needed as a workaround for 2 things:
