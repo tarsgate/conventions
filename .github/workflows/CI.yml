@@ -228,37 +228,41 @@ jobs:
               "submodules": "recursive",
               "fetch-depth": 0
             }
-      - name: Check all files end with EOL
-        run: ./scripts/eofConvention.fsx
-      - name: Check all .fsx scripts have (proper) shebang
-        run: ./scripts/shebangConvention.fsx
-      - name: Check all F# scripts have execute permission
-        run: ./scripts/executableConvention.fsx
-      - name: Check there are no mixed line-endings in any files
-        run: ./scripts/mixedLineEndings.fsx
-      - name: Check there are no unpinned GitHubActions image versions
-        run: ./scripts/unpinnedGitHubActionsImageVersions.fsx
-      - name: Check there are no unpinned nuget package reference versions in .NET project files
-        run: ./scripts/unpinnedNugetPackageReferenceVersionsInProjects.fsx
-      - name: Check there are no unpinned nuget package reference versions in F# scripts
-        run: ./scripts/unpinnedNugetPackageReferenceVersionsInFSharpScripts.fsx
-      - name: Check there are no unpinned versions in `dotnet tool install` commands
-        run: ./scripts/unpinnedDotnetToolInstallVersions.fsx
-      - name: Check there are no inconsistent versions GitHubCI files
-        run: ./scripts/inconsistentVersionsInGitHubCI.fsx
-      - name: Check there are no inconsistent versions in nuget package references of F# scripts
-        run: ./scripts/inconsistentNugetVersionsInFSharpScripts.fsx
-      - name: Check there are no non-verbose flags in scripts and CI YML files
-        run: ./scripts/nonVerboseFlagsInGitHubCIAndScripts.fsx
-      - name: Sanity check nuget packages of .NET projects
-        run: |
-          dotnet restore
-          ./scripts/inconsistentNugetVersionsInDotNetProjects.fsx
-      - name: Check there are no inconsistent versions in nuget package references of F# scripts and projects
-        run: ./scripts/inconsistentNugetVersionsInDotNetProjectsAndFSharpScripts.fsx
-      - name: FSharpLint
-        run: |
-          ./scripts/runFSharpLint.fsx
+
+      - parallel:
+          - name: Check all files end with EOL
+            run: ./scripts/eofConvention.fsx
+          - name: Check all .fsx scripts have (proper) shebang
+            run: ./scripts/shebangConvention.fsx
+          - name: Check all F# scripts have execute permission
+            run: ./scripts/executableConvention.fsx
+          - name: Check there are no mixed line-endings in any files
+            run: ./scripts/mixedLineEndings.fsx
+          - name: Check there are no unpinned GitHubActions image versions
+            run: ./scripts/unpinnedGitHubActionsImageVersions.fsx
+          - name: Check there are no unpinned nuget package reference versions in .NET project files
+            run: ./scripts/unpinnedNugetPackageReferenceVersionsInProjects.fsx
+          - name: Check there are no unpinned nuget package reference versions in F# scripts
+            run: ./scripts/unpinnedNugetPackageReferenceVersionsInFSharpScripts.fsx
+          - name: Check there are no unpinned versions in `dotnet tool install` commands
+            run: ./scripts/unpinnedDotnetToolInstallVersions.fsx
+          - name: Check there are no inconsistent versions GitHubCI files
+            run: ./scripts/inconsistentVersionsInGitHubCI.fsx
+          - name: Check there are no inconsistent versions in nuget package references of F# scripts
+            run: ./scripts/inconsistentNugetVersionsInFSharpScripts.fsx
+          - name: Check there are no non-verbose flags in scripts and CI YML files
+            run: ./scripts/nonVerboseFlagsInGitHubCIAndScripts.fsx
+
+      - name: DotNet Restore
+        run: dotnet restore
+      - parallel:
+          - name: Sanity check nuget packages of .NET projects
+            run: ./scripts/inconsistentNugetVersionsInDotNetProjects.fsx
+          - name: Check there are no inconsistent versions in nuget package references of F# scripts and projects
+            run: ./scripts/inconsistentNugetVersionsInDotNetProjectsAndFSharpScripts.fsx
+          - name: FSharpLint
+            run: ./scripts/runFSharpLint.fsx
+
       - name: Run git+githubCI workaround
         run: |
           # workaround for https://github.com/actions/runner/issues/2033
