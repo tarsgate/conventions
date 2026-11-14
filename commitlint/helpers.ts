@@ -124,14 +124,20 @@ export abstract class Helpers {
         return false;
     }
 
-    // NOTE: a code block delimiter is expected to be exactly the 3-backticks
-    // sequence, but we tolerate trailing whitespace in it (e.g. "``` ") so that
-    // the code block boundaries are still detected correctly; such trailing
-    // whitespace is a problem that the trailing-whitespace plugin reports
+    // NOTE: a code block delimiter is expected to be the 3-backticks sequence,
+    // optionally tagged with the language whose syntax highlighting should be
+    // used inside the block (e.g. "```typescript"). We also tolerate
+    // whitespace around the tag (e.g. "``` typescript ") so that the code block
+    // boundaries are still detected correctly; such trailing whitespace is a
+    // problem that the trailing-whitespace plugin reports. Note that inline
+    // code spans (e.g. "```[1]```") are deliberately not considered delimiters.
     public static isCodeBlockDelimiter(line: string) {
         Helpers.assertLine(line);
         const codeBlockDelimiter = "```";
-        return line.trimEnd() === codeBlockDelimiter;
+        const taggedCodeBlockDelimiterPattern = new RegExp(
+            `^${codeBlockDelimiter}\\s*[A-Za-z0-9_+#.-]*\\s*$`
+        );
+        return taggedCodeBlockDelimiterPattern.test(line);
     }
 
     public static isUpperCase(letter: string) {
