@@ -39,42 +39,35 @@ export abstract class Plugins {
         const body = Helpers.extractBodyFromCommitMsg(rawStr);
 
         if (body instanceof Some) {
-            let bodyStr = body.value;
+            const paragraphs = Helpers.splitIntoParagraphs(
+                Helpers.linesWithCodeBlocksBlankedOut(body.value)
+            );
 
-            bodyStr = Helpers.removeAllCodeBlocks(bodyStr).trim();
+            for (let paragraph of paragraphs) {
+                paragraph = paragraph.trim();
 
-            if (bodyStr.trim() !== Empty.string()) {
-                for (let paragraph of Helpers.splitByEOLs(bodyStr, 2)) {
-                    paragraph = paragraph.trim();
+                if (paragraph === Empty.string()) {
+                    continue;
+                }
 
-                    if (paragraph === "") {
-                        continue;
-                    }
+                const startWithLowerCase = Helpers.isLowerCase(paragraph[0]);
 
-                    const startWithLowerCase = Helpers.isLowerCase(
-                        paragraph[0]
-                    );
+                const validParagraphEnd = paragraphHasValidEnding(paragraph);
 
-                    const validParagraphEnd =
-                        paragraphHasValidEnding(paragraph);
+                const lines = Helpers.splitByEOLs(paragraph, 1);
 
-                    const lines = Helpers.splitByEOLs(paragraph, 1);
-
-                    if (startWithLowerCase) {
-                        if (
-                            !(lines.length == 1 && Helpers.isValidUrl(lines[0]))
-                        ) {
-                            offence = true;
-                        }
-                    }
-
-                    if (
-                        !validParagraphEnd &&
-                        !Helpers.isValidUrl(lines[lines.length - 1]) &&
-                        !Helpers.isFooterNote(lines[lines.length - 1])
-                    ) {
+                if (startWithLowerCase) {
+                    if (!(lines.length == 1 && Helpers.isValidUrl(lines[0]))) {
                         offence = true;
                     }
+                }
+
+                if (
+                    !validParagraphEnd &&
+                    !Helpers.isValidUrl(lines[lines.length - 1]) &&
+                    !Helpers.isFooterNote(lines[lines.length - 1])
+                ) {
+                    offence = true;
                 }
             }
         }
@@ -178,11 +171,9 @@ export abstract class Plugins {
         let offence = false;
 
         if (body instanceof Some) {
-            let bodyStr = body.value;
-            bodyStr = Helpers.removeAllCodeBlocks(bodyStr).trim();
             let seenBody = false;
             let seenFooter = false;
-            const lines = Helpers.splitByEOLs(bodyStr, 1);
+            const lines = Helpers.linesWithCodeBlocksBlankedOut(body.value);
             for (const line of lines) {
                 if (line.length === 0) {
                     continue;
@@ -216,10 +207,9 @@ export abstract class Plugins {
         if (lineBreakIndex >= 0) {
             // Extracting bodyStr from rawStr rather than using body directly is a
             // workaround for https://github.com/conventional-changelog/conventional-changelog/issues/1016
-            let bodyStr = rawStr.substring(lineBreakIndex).trim();
-            bodyStr = Helpers.removeAllCodeBlocks(bodyStr);
+            const bodyStr = rawStr.substring(lineBreakIndex).trim();
 
-            const lines = Helpers.splitByEOLs(bodyStr, 1);
+            const lines = Helpers.linesWithCodeBlocksBlankedOut(bodyStr);
             const bodyReferences = new Set();
             const references = new Set();
             for (const line of lines) {
@@ -297,10 +287,11 @@ export abstract class Plugins {
         if (lineBreakIndex >= 0) {
             // Extracting bodyStr from rawStr rather than using body directly is a
             // workaround for https://github.com/conventional-changelog/commitlint/issues/3412
-            let bodyStr = rawStr.substring(lineBreakIndex).trim();
+            const bodyStr = rawStr.substring(lineBreakIndex).trim();
 
-            bodyStr = Helpers.removeAllCodeBlocks(bodyStr);
-            offence = Helpers.includesHashtagRef(bodyStr);
+            const bodyStrWithoutCodeBlocks =
+                Helpers.linesWithCodeBlocksBlankedOut(bodyStr).join("\n");
+            offence = Helpers.includesHashtagRef(bodyStrWithoutCodeBlocks);
         }
 
         if (!offence) {
@@ -329,8 +320,9 @@ export abstract class Plugins {
     }
 
     public static tooManySpaces(rawStr: string): Option<string> {
-        rawStr = Helpers.removeAllCodeBlocks(rawStr);
-        const offence = rawStr.match(`[^.]  `) !== null;
+        const textWithoutCodeBlocks =
+            Helpers.linesWithCodeBlocksBlankedOut(rawStr).join("\n");
+        const offence = textWithoutCodeBlocks.match(`[^.]  `) !== null;
 
         if (!offence) {
             return Nothing;
@@ -433,45 +425,31 @@ export abstract class Plugins {
         let offence = false;
 
         if (body instanceof Some) {
-            let bodyStr = body.value;
-            bodyStr = bodyStr.trim();
-            bodyStr = Helpers.removeAllCodeBlocks(bodyStr).trim();
+            const lines = Helpers.linesWithCodeBlocksBlankedOut(body.value);
+            for (const line of lines) {
+                if (line.length > bodyMaxLineLength) {
+                    const isUrl = Helpers.isValidUrl(line);
 
-            if (bodyStr !== "") {
-                const lines = Helpers.splitByEOLs(bodyStr, 1);
-                let inCodeBlock = false;
-                for (const line of lines) {
-                    if (Helpers.isCodeBlockDelimiter(line)) {
-                        inCodeBlock = !inCodeBlock;
-                        continue;
-                    }
-                    if (inCodeBlock) {
-                        continue;
-                    }
-                    if (line.length > bodyMaxLineLength) {
-                        const isUrl = Helpers.isValidUrl(line);
+                    const lineIsFooterNote = Helpers.isFooterNote(line);
 
-                        const lineIsFooterNote = Helpers.isFooterNote(line);
+                    const commitHashPattern = `([0-9a-f]{40})`;
+                    /* eslint no-useless-escape: "off" -- escapes needed because this string is used as part of Regex */
+                    const anySinglePunctuationCharOrNothing = `[\.\,\:\;\?\!]?`;
+                    const index = line.search(
+                        commitHashPattern +
+                            anySinglePunctuationCharOrNothing +
+                            `$`
+                    );
+                    const endsWithCommitHashButRestIsNotTooLong =
+                        index != -1 && index < bodyMaxLineLength;
 
-                        const commitHashPattern = `([0-9a-f]{40})`;
-                        /* eslint no-useless-escape: "off" -- escapes needed because this string is used as part of Regex */
-                        const anySinglePunctuationCharOrNothing = `[\.\,\:\;\?\!]?`;
-                        const index = line.search(
-                            commitHashPattern +
-                                anySinglePunctuationCharOrNothing +
-                                `$`
-                        );
-                        const endsWithCommitHashButRestIsNotTooLong =
-                            index != -1 && index < bodyMaxLineLength;
-
-                        if (
-                            !isUrl &&
-                            !lineIsFooterNote &&
-                            !endsWithCommitHashButRestIsNotTooLong
-                        ) {
-                            offence = true;
-                            break;
-                        }
+                    if (
+                        !isUrl &&
+                        !lineIsFooterNote &&
+                        !endsWithCommitHashButRestIsNotTooLong
+                    ) {
+                        offence = true;
+                        break;
                     }
                 }
             }
@@ -496,10 +474,9 @@ export abstract class Plugins {
         let offence: Option<string> = Nothing;
 
         if (body instanceof Some) {
-            let bodyStr = body.value;
-            bodyStr = Helpers.removeAllCodeBlocks(bodyStr).trim();
-
-            const paragraphs = Helpers.splitByEOLs(bodyStr, 2);
+            const paragraphs = Helpers.splitIntoParagraphs(
+                Helpers.linesWithCodeBlocksBlankedOut(body.value)
+            );
             for (const paragraph of paragraphs) {
                 const lines = Helpers.splitByEOLs(paragraph, 1);
 
@@ -510,7 +487,7 @@ export abstract class Plugins {
                 for (let i = 0; i < lines.length - 1; i++) {
                     const line = lines[i];
 
-                    if (line.length == 0) {
+                    if (line.length === 0) {
                         continue;
                     }
 
@@ -582,29 +559,24 @@ export abstract class Plugins {
         let offence = false;
 
         let lineIndex = 0;
-        const lines = Helpers.splitByEOLs(rawStr, 1);
-        let inCodeBlock = false;
-        for (const line of lines) {
-            lineIndex++;
-            if (Helpers.isCodeBlockDelimiter(line)) {
-                inCodeBlock = !inCodeBlock;
-                continue;
-            }
-            if (inCodeBlock) {
+        const lines = Helpers.linesWithCodeBlocksBlankedOut(rawStr);
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            if (line.length === 0) {
                 continue;
             }
 
             if (line[0] == " " || line[0] == "\t") {
                 offence = true;
+                lineIndex = i + 1;
                 break;
             }
 
-            if (line.length > 0) {
-                const lastChar = line[line.length - 1];
-                if (lastChar == " " || lastChar == "\t") {
-                    offence = true;
-                    break;
-                }
+            const lastChar = line[line.length - 1];
+            if (lastChar == " " || lastChar == "\t") {
+                offence = true;
+                lineIndex = i + 1;
+                break;
             }
         }
 

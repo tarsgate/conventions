@@ -857,7 +857,8 @@ Blah blah blah[1].
 
 // This test reflects this issue: https://github.com/tarsgate/conventions/issues/125
 test("footer-refs-validity7", () => {
-    const commitMsgWithWithoutFooter = "foo: blah blah" + "\n\n" + "```[1]```";
+    const commitMsgWithWithoutFooter =
+        "foo: blah blah" + "\n\n" + "```\n[1]\n```";
 
     const footerRefsValidity7 = runCommitLintOnMsg(commitMsgWithWithoutFooter);
     expect(footerRefsValidity7.status).toBe(0);
@@ -1036,11 +1037,11 @@ test("header-max-length-with-suggestions10", () => {
 
 test("header-max-length-with-suggestions11", () => {
     const commitMsgThatExceedsHeaderMaxLength =
-        "Split that compares better because blah blah bla very very very long title";
+        "Logic that converts better because blah blah bla very very very long title";
     const headerMaxLength12 = runCommitLintOnMsg(
         commitMsgThatExceedsHeaderMaxLength
     );
-    const not_expected_message = `"compares" -> "cmps"`;
+    const not_expected_message = `"converts" -> "convs"`;
     expect(headerMaxLength12.status).not.toBe(0);
     expect(
         (headerMaxLength12.stdout + "").includes(not_expected_message)
