@@ -857,7 +857,8 @@ Blah blah blah[1].
 
 // This test reflects this issue: https://github.com/tarsgate/conventions/issues/125
 test("footer-refs-validity7", () => {
-    const commitMsgWithWithoutFooter = "foo: blah blah" + "\n\n" + "```[1]```";
+    const commitMsgWithWithoutFooter =
+        "foo: blah blah" + "\n\n" + "```\n[1]\n```";
 
     const footerRefsValidity7 = runCommitLintOnMsg(commitMsgWithWithoutFooter);
     expect(footerRefsValidity7.status).toBe(0);
