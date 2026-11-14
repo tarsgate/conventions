@@ -209,6 +209,15 @@ test("body-prose17", () => {
     expect(bodyProse17.status).toBe(0);
 });
 
+test("body-prose18", () => {
+    const commitMsgWithTaggedBlock =
+        "foo: this is only a title\n\nBar baz.\n\n```typescript\nif (foo) { bar(); }\n```";
+    const bodyProse18 = runCommitLintOnMsg(commitMsgWithTaggedBlock);
+
+    // because ```typescript blocks surrounded like this``` can bypass the rule
+    expect(bodyProse18.status).toBe(0);
+});
+
 test("body-max-line-length1", () => {
     const tenChars = "1234 67890";
     const sixtyChars =
@@ -1343,6 +1352,25 @@ test("trailing-whitespace8", () => {
         commitMsgWithTrailingWhiteSpaceInCodeBlockDelimiterEnding
     );
     expect(trailingWhitespace7.status).not.toBe(0);
+});
+
+test("trailing-whitespace9", () => {
+    const commitMsgWithNestedBlocksWithTaggedOuterBlock =
+        "foo: this is only a title" +
+        "\n\n" +
+        "This is what AI told me:\n```markdown\n" +
+        " ### Step-by-Step Breakdown\n" +
+        " ```\n" +
+        " gh repo view ${{ github.repository }} --json parent\n" +
+        " ```\n" +
+        " The above code does blah blah...\n" +
+        "```";
+    const trailingWhitespace9 = runCommitLintOnMsg(
+        commitMsgWithNestedBlocksWithTaggedOuterBlock
+    );
+
+    // because inner blocks of tagged outer blocks are indented, so bypass the rule
+    expect(trailingWhitespace9.status).toBe(0);
 });
 
 test("type-space-after-colon1", () => {
