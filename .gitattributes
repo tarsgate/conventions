@@ -1,0 +1,18 @@
+# Force LF in the working tree for the file types that prettier and fantomless
+# expect to be LF (see .editorconfig). Without this, a Windows checkout with
+# core.autocrlf=true would produce CRLF and break those tools.
+.gitattributes text eol=lf
+*.yml text eol=lf
+*.ts text eol=lf
+*.sh text eol=lf
+*.fs text eol=lf
+*.fsx text eol=lf
+
+# Windows-only script formats.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Fixtures that intentionally contain specific line endings; keep verbatim.
+src/FileConventions.Test/DummyFiles/DummyWithLFLineEndings -text
+src/FileConventions.Test/DummyFiles/DummyWithCRLFLineEndings -text
+src/FileConventions.Test/DummyFiles/DummyWithMixedLineEndings -text

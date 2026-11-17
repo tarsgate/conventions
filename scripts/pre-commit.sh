@@ -15,10 +15,10 @@ if ! npm run format:check > /dev/null 2>&1; then
 fi
 
 echo "Running fantomless format check..."
-if ! dnx fantomless-tool --check --recurse . > /dev/null 2>&1; then
+if ! dotnet dnx --yes fantomless-tool --check --recurse . > /dev/null 2>&1; then
     echo ""
     echo "❌ Fantomless check failed. Please run 'make format' to fix formatting issues, then stage the changes and try committing again."
-    dnx --yes fantomless-tool --check --recurse .
+    dotnet dnx --yes fantomless-tool --check --recurse .
     exit 1
 fi
 

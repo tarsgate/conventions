@@ -12,8 +12,8 @@
         "husky": "^9.0.0"
     },
     "scripts": {
-        "format": "(npx --no-install prettier --version || (echo '\nPlease install `prettier` via `npm install` first; if this problem persists, try `npm rebuild && npm install`' >&2 && exit 1)) && npx --no-install prettier --quote-props=consistent --write './**/*.{yml,ts,sh}'",
-        "format:check": "(npx --no-install prettier --version || (echo '\nPlease install `prettier` via `npm install` first; if this problem persists, try `npm rebuild && npm install`' >&2 && exit 1)) && npx --no-install prettier --quote-props=consistent --check './**/*.{yml,ts,sh}'",
+        "format": "(npx --no-install prettier --version || (echo \"Please install 'prettier' via 'npm install' first; if this problem persists, try 'npm rebuild' and 'npm install'\" >&2 && exit 1)) && npx --no-install prettier --quote-props=consistent --write \"./**/*.{yml,ts,sh}\" \"!**/.husky/**\"",
+        "format:check": "(npx --no-install prettier --version || (echo \"Please install 'prettier' via 'npm install' first; if this problem persists, try 'npm rebuild' and 'npm install'\" >&2 && exit 1)) && npx --no-install prettier --quote-props=consistent --check \"./**/*.{yml,ts,sh}\" \"!**/.husky/**\"",
         "test": "vitest --globals=true",
         "prepare": "husky"
     }
