@@ -31,20 +31,21 @@ jobs:
       - name: Run Pi agent
         id: pi-step
 
-        # f7496a9aea9798c5d52d39096d98d5c5b16559b3 = v2.30.2 ( which depends on Pi v1.5.2 )
-        uses: tarsgate/pi-coding-agent-action@c9c89dcabbf612ab2a528acfad8785a8075e22f3
+        # e7bc21262bbc4f2b64b6e8b0eb1727aa321add80 = v2.30.2-develop.d5e244b ( 2.30.2+PR437 ) which depends on Pi v1.5.2
+        uses: tarsgate/pi-coding-agent-action@e7bc21262bbc4f2b64b6e8b0eb1727aa321add80
 
         # we want to still upload session artifacts even if it fails (to diagnose problems)
         continue-on-error: true
 
         with:
           github_token: ${{ secrets.GH_REPO_BOT_ACCESS_TOKEN }}
-          provider: nanogpt
-          model: auto-model-basic
-          token: ${{ secrets.NANOGPT_API_KEY }}
+          provider: ppq
+          model: auto
+          token: ${{ secrets.PPQ_API_KEY }}
           branch_name_template: "wip/pi/issue{number}-{title}-{timestamp}"
           export_session_html: true
           export_session_jsonl: true
+          collapse_intermediate_output: true
           extensions: |
             npm:awto-pi-lot
 
