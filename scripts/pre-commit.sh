@@ -14,7 +14,7 @@ run_check() {
     local output
     if ! output=$("$@" 2>&1); then
         echo ""
-        echo "❌ $name check failed. Please run 'make format' to fix formatting issues, then stage the changes and try committing again."
+        echo "❌ $name check failed. Please run 'make format' ('.\make.cmd format' in PowerShell) to fix formatting issues, then stage the changes and try committing again."
         echo "$output"
         exit 1
     fi
