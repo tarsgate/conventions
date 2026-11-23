@@ -1,0 +1,41 @@
+name: WIP Commits Comment
+
+on:
+  # Use the base repository's token so comments also work for fork PRs.
+  # Never check out or execute PR code in this workflow.
+  pull_request_target:
+    types: [opened, ready_for_review, converted_to_draft]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  comment-on-wip-commits:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check commits and comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const commits = await github.paginate(github.rest.pulls.listCommits, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100
+            });
+
+            if (!commits.some(commit => commit.commit.message.startsWith('WIP'))) {
+              return;
+            }
+
+            await github.rest.issues.createComment({
+              issue_number: pr.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '⚠️ **WIP Commits Detected!**\n\nHey @' +
+                pr.user.login +
+                ', this PR contains commits whose messages start with WIP. ' +
+                '**If your PR contains WIP commits, it MUST be marked as DRAFT!**'
+            });
