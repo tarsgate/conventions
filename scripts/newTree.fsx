@@ -326,6 +326,8 @@ let ResolvePrUrl(prUrl: string) : string * string =
 
 // Determine branch existence via ls-remote against a single remote target (name or URL)
 let CheckRemoteBranchExists (cloneDir: AbsDir) branchName remote =
+    let branchRef = "refs/heads/" + branchName
+
     let output =
         Process
             .ExecDefault(
@@ -333,13 +335,17 @@ let CheckRemoteBranchExists (cloneDir: AbsDir) branchName remote =
                     "git -C %s ls-remote --heads %s %s"
                     cloneDir.FullPath
                     remote
-                    branchName,
+                    branchRef,
                 echo = Echo.Off
             )
             .UnwrapDefault()
             .Trim()
 
-    output.Contains branchName
+    // ls-remote patterns match ref suffixes, not necessarily exact branch names.
+    Misc.CrossPlatformStringSplitInLines output
+    |> Seq.exists(fun line ->
+        line.EndsWith("\t" + branchRef, StringComparison.Ordinal)
+    )
 
 let AllRemotes(cloneDir: AbsDir) =
     if not cloneDir.Exists then
@@ -381,6 +387,29 @@ let GetCurrentHeadBranch(cloneDir: AbsDir) =
         )
         .UnwrapDefault(throwWhenWarnings = false)
         .Trim()
+
+let GetExistingWorktreeBranches(cloneDir: AbsDir) =
+    let output =
+        Process
+            .ExecDefault(
+                sprintf "git -C %s worktree list --porcelain" cloneDir.FullPath,
+                echo = Echo.Off
+            )
+            .UnwrapDefault()
+
+    Misc.CrossPlatformStringSplitInLines output
+    |> Seq.map(fun line -> line.Trim())
+    |> Seq.filter(fun trimmed -> not(String.IsNullOrEmpty trimmed))
+    |> Seq.choose(fun trimmed ->
+        let branchPrefix = "branch refs/heads/"
+
+        if trimmed.StartsWith branchPrefix then
+            Some(trimmed.Substring branchPrefix.Length)
+        else
+            None
+    )
+    |> Seq.distinct
+    |> Seq.toList
 
 let ValidateDirIsClone(cloneDir: AbsDir) =
     let gitFile =
@@ -668,40 +697,87 @@ match initialState with
         |> ignore<string>
 | _ -> ()
 
-// Ensure the target branch (and head branch, in case we want to rebase) are
-// included in fetch refspec if it exists on remote
-if branchTargetInfo.ExistsAlready then
-    let branchesToFetch =
-        let headBranch =
-            match initialState with
-            | {
-                  ArgType = Url(_fullUrl, _owner, headBranch)
-                  AlreadyCloned = _
-                  RepoAndFolderName = _
-              } -> headBranch
-            | _ -> GetCurrentHeadBranch cloneDir
+// Collect all branches that should be tracked:
+// branches used by existing worktrees, the head branch, and the target branch.
+// Then reset each remote's branch tracking to only the branches that still
+// exist on that remote, removing stale entries that would cause fetch failures.
+let branchesToTrack =
+    let headBranch =
+        match initialState with
+        | {
+              ArgType = Url(_fullUrl, _owner, headBranch)
+              AlreadyCloned = _
+              RepoAndFolderName = _
+          } -> headBranch
+        | _ -> GetCurrentHeadBranch cloneDir
 
-        [ headBranch; branchTargetInfo.Name ]
+    let worktreeBranches = GetExistingWorktreeBranches cloneDir
 
-    let allRemoteNames =
-        AllRemotes cloneDir |> Map.toSeq |> Seq.map fst |> Seq.toList
+    (worktreeBranches @ [ headBranch; branchTargetInfo.Name ])
+    |> Seq.distinct
+    |> Seq.toList
 
-    allRemoteNames
-    |> Seq.iter(fun remoteName ->
-        for branchToFetch in branchesToFetch do
-            if CheckRemoteBranchExists cloneDir branchToFetch remoteName then
-                let setBranchesCmd =
+let allRemoteNames =
+    AllRemotes cloneDir |> Map.toSeq |> Seq.map fst |> Seq.toList
+
+allRemoteNames
+|> Seq.iter(fun remoteName ->
+    let existingBranches =
+        branchesToTrack
+        |> List.filter(fun branch ->
+            CheckRemoteBranchExists cloneDir branch remoteName
+        )
+
+    let hasFetchRefspec =
+        match
+            Process
+                .ExecDefault(
                     sprintf
-                        "git -C %s remote set-branches --add %s %s"
+                        "git -C %s config --get-all remote.%s.fetch"
                         cloneDir.FullPath
-                        remoteName
-                        branchToFetch
+                        remoteName,
+                    echo = Echo.Off
+                )
+                .Result
+            with
+        | ProcessResultState.Error _ -> false
+        | _ -> true
 
-                Process
-                    .ExecDefault(setBranchesCmd)
-                    .UnwrapDefault(throwWhenWarnings = false)
-                |> ignore<string>
-    )
+    let maybeSetBranchesCmd =
+        match existingBranches, hasFetchRefspec with
+        | [], false -> None
+        | [], true ->
+            Some(
+                sprintf
+                    "git -C %s remote set-branches %s"
+                    cloneDir.FullPath
+                    remoteName
+            )
+        | branches, false ->
+            Some(
+                sprintf
+                    "git -C %s remote set-branches --add %s %s"
+                    cloneDir.FullPath
+                    remoteName
+                    (String.Join(" ", branches))
+            )
+        | branches, true ->
+            Some(
+                sprintf
+                    "git -C %s remote set-branches %s %s"
+                    cloneDir.FullPath
+                    remoteName
+                    (String.Join(" ", branches))
+            )
+
+    match maybeSetBranchesCmd with
+    | None -> ()
+    | Some setBranchesCmd ->
+        Process
+            .ExecDefault(setBranchesCmd)
+            .UnwrapDefault(throwWhenWarnings = false)
+        |> ignore<string>
+)
 
 // Fetch all remotes
 Process
