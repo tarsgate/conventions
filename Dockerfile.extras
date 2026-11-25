@@ -1,5 +1,5 @@
 diff --git a/Dockerfile.base b/Dockerfile.base
-index 29e658e..a840e50 100644
+index 29e658e..eb510d1 100644
 --- a/Dockerfile.base
 +++ b/Dockerfile.base
 @@ -15,6 +15,128 @@ RUN apt --yes install --no-install-recommends dotnet-sdk-10.0
@@ -113,7 +113,7 @@ index 29e658e..a840e50 100644
 +# Install Pulumi providers
 +ADD scripts/installPulumiProvider.fsx /usr/local/bin/installPulumiProvider.fsx
 +RUN installPulumiProvider.fsx bitlaunch 0.4.2
-+RUN installPulumiProvider.fsx lnvps 0.0.52
++RUN installPulumiProvider.fsx lnvps 0.0.53
 +RUN installPulumiProvider.fsx namesilo 0.0.7
 +RUN installPulumiProvider.fsx unhumandomains 0.0.11
 +
